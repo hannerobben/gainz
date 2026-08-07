@@ -202,7 +202,7 @@ function cancel() {
                 <div class="footer-actions">
                     <Button label="Cancel" severity="secondary" text @click="cancel" />
                     <Button
-                        label="Save Workout"
+                        label="Save"
                         :loading="saving"
                         :disabled="entries.length === 0"
                         @click="save"
@@ -374,6 +374,7 @@ function cancel() {
 .footer-actions {
     display: flex;
     gap: 8px;
+    margin-left: auto;
 }
 
 .confirm-text {
