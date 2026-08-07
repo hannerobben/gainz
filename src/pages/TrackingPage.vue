@@ -243,7 +243,7 @@ const weeks = computed(() => {
                     v-for="f in filters"
                     :key="f.type"
                     class="filter-circle"
-                    :style="{backgroundColor: f.bg, opacity: selectedFilters.has(f.type) ? 1 : 0.5}"
+                    :style="{backgroundColor: f.bg, opacity: selectedFilters.has(f.type) ? 1 : 0.4}"
                     @click="toggleFilter(f.type)"
                 >
                     <component :is="f.icon" :size="20" color="white" />

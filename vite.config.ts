@@ -16,7 +16,7 @@ export default defineConfig({
         name: 'Gainz',
         short_name: 'Gainz',
         description: 'Fitness Tracker',
-        theme_color: '#2E7D32',
+        theme_color: '#0a0d2e',
         background_color: '#fffdf3',
         icons: [
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
