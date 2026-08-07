@@ -39,7 +39,8 @@ function formatSets(sets: { load: number; reps: number }[]): { text: string; bad
 async function loadProgressions() {
     if (!usersStore.activeUser) return;
     loading.value = true;
-    progressions.value = await WorkoutApi.getStrengthProgression(usersStore.activeUser.id);
+    const result = await WorkoutApi.getStrengthProgression(usersStore.activeUser.id);
+    progressions.value = result.sort((a, b) => b.dataPoints.length - a.dataPoints.length);
     loading.value = false;
 }
 

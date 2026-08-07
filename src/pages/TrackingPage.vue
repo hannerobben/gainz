@@ -187,7 +187,7 @@ const scrollTargetEl = ref<HTMLElement | null>(null);
 
 const scrollTargetIndex = computed(() => {
     const idx = weeks.value.findIndex(w => w.cells.some(c => c?.isToday));
-    return idx === -1 ? 0 : Math.max(0, idx - 5);
+    return idx === -1 ? 0 : Math.max(0, idx - 9);
 });
 
 onMounted(async () => {

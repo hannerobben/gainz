@@ -58,10 +58,10 @@ export const primevuePreset = definePreset(Aura, {
                     root: {
                         primary: {
                             background: '#0a0d2e',
-                            hoverBackground: '#1e2360',
+                            hoverBackground: '#181c32',
                             activeBackground: '#747CBD',
                             borderColor: '#0a0d2e',
-                            hoverBorderColor: '#1e2360',
+                            hoverBorderColor: '#181c32',
                             activeBorderColor: '#747CBD',
                             color: '#ffffff',
                             hoverColor: '#ffffff',
