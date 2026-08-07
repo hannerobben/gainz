@@ -3,7 +3,7 @@ import {computed} from 'vue';
 import {createLucideIcon, Dumbbell, Footprints} from 'lucide-vue-next';
 import {SportShoe as SportShoeIcon} from 'lucide';
 
-const SportShoe = createLucideIcon('SportShoe', SportShoeIcon);
+const SportShoe = createLucideIcon('SportShoe', SportShoeIcon as any);
 
 const props = defineProps<{date: Date | null; existingTypes: string[]}>();
 const emit = defineEmits<{close: []; 'open-strength-workout': []; 'open-run': []; 'open-walk': []}>();

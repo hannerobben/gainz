@@ -3,7 +3,7 @@ import {computed, nextTick, onMounted, ref, watch} from 'vue';
 import {ChevronLeft, ChevronRight, createLucideIcon, Dumbbell, Footprints} from 'lucide-vue-next';
 import {SportShoe as SportShoeIcon} from 'lucide';
 
-const SportShoe = createLucideIcon('SportShoe', SportShoeIcon);
+const SportShoe = createLucideIcon('SportShoe', SportShoeIcon as any);
 import DayDetailDialog from '../components/DayDetailDialog.vue';
 import CreateStrengthWorkoutDialog from '../components/CreateStrengthWorkoutDialog.vue';
 import LogWalkDialog from '../components/LogWalkDialog.vue';
