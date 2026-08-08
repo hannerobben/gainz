@@ -311,7 +311,6 @@ function pace(run: RunEntry): string {
     display: flex;
     gap: 24px;
     margin-bottom: 12px;
-  justify-content: space-around;
 }
 
 .summary-card__stat {
