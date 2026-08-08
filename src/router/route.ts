@@ -34,7 +34,7 @@ const routes = [
             { path: 'dashboard', name: 'Dashboard', component: DashboardPage, meta: { title: 'Progress' } },
             { path: 'exercises', name: 'Exercises', component: ExercisesPage, meta: { title: 'Exercise Catalog' } },
             { path: 'history', name: 'History', component: HistoryPage, meta: { title: 'Workout History' } },
-            { path: 'weight', name: 'Weight', component: UserWeightPage, meta: { title: 'Weight Trackermak' } },
+            { path: 'weight', name: 'Weight', component: UserWeightPage, meta: { title: 'Weight Tracker' } },
         ]
     }
 ];
