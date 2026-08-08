@@ -117,6 +117,7 @@ const chartOptions = computed(() => ({
     },
     scales: {
         x: {
+            max: bestDay.value ?? undefined,
             grid: {color: 'rgba(0,0,0,0.06)'},
             ticks: {
                 color: 'rgba(0,0,0,0.5)',
