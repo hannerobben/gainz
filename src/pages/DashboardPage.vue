@@ -26,7 +26,7 @@ const selectedType = ref(new Set<string>(['strength']));
 
 <style scoped>
 .dashboard {
-    padding: 16px 1.5rem;
+    padding: 16px;
     padding-top: 0;
     overflow-x: hidden;
 }
