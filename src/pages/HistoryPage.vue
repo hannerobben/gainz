@@ -44,6 +44,20 @@ function formatSet(load: number | null, reps: number | null): string {
     if (load !== null) return `${load} kg`;
     return '—';
 }
+
+function formatSets(sets: {load: number | null; reps: number | null}[]): {text: string; count: number}[] {
+    const groups: {text: string; count: number}[] = [];
+    for (const set of sets) {
+        const text = formatSet(set.load, set.reps);
+        const last = groups[groups.length - 1];
+        if (last && last.text === text) {
+            last.count++;
+        } else {
+            groups.push({text, count: 1});
+        }
+    }
+    return groups;
+}
 </script>
 
 <template>
@@ -70,9 +84,10 @@ function formatSet(load: number | null, reps: number | null): string {
                         <div v-for="entry in workout.entries" :key="entry.exercise.id" class="exercise-row">
                             <span class="exercise-name">{{ entry.exercise.name }}</span>
                             <div class="sets-row">
-                                <span v-for="(set, i) in entry.sets" :key="i" class="set-chip">
-                                    {{ formatSet(set.load, set.reps) }}
-                                </span>
+                                <div v-for="(group, i) in formatSets(entry.sets)" :key="i" class="set-group">
+                                    <span class="set-chip">{{ group.text }}</span>
+                                    <span v-if="group.count > 1" class="set-multiplier">×{{ group.count }}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -154,12 +169,25 @@ function formatSet(load: number | null, reps: number | null): string {
     gap: 4px;
 }
 
+.set-group {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.set-multiplier {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #9E9E9E;
+  padding: 0 2px;
+}
+
 .set-chip {
     font-size: 0.75rem;
     font-weight: 500;
     color: #ffffff;
-    background: #C9A84C;
-    border-radius: 12px;
+    background: #C17A30;
+    border-radius: 4px;
     padding: 2px 8px;
     white-space: nowrap;
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {computed, ref, watch} from 'vue';
+import {computed, nextTick, ref, watch} from 'vue';
 import {storeToRefs} from 'pinia';
 import {X, Plus} from 'lucide-vue-next';
 import {useToast} from 'primevue/usetoast';
@@ -57,9 +57,13 @@ function removeEntry(index: number) {
     entries.value.splice(index, 1);
 }
 
-function addSet(entry: WorkoutExerciseEntry) {
+const searchBarEl = ref<{ $el: HTMLElement } | null>(null);
+
+async function addSet(entry: WorkoutExerciseEntry) {
     const last = entry.sets[entry.sets.length - 1];
     entry.sets.push({load: last?.load ?? null, reps: last?.reps ?? null});
+    await nextTick();
+    searchBarEl.value?.$el?.scrollIntoView({behavior: 'smooth', block: 'end'});
 }
 
 function removeSet(entry: WorkoutExerciseEntry, index: number) {
@@ -119,24 +123,13 @@ function cancel() {
         :visible="visible"
         :header="title"
         :modal="true"
-        :closable="false"
+        :closable="true"
         :style="{width: '480px', maxWidth: '95vw'}"
+        @update:visible="cancel"
     >
         <div class="workout-form">
-            <AutoComplete
-                v-model="searchQuery"
-                :suggestions="filteredExercises"
-                optionLabel="name"
-                placeholder="Search and add exercise..."
-                class="exercise-search"
-                forceSelection
-                fluid
-                @complete="onSearch"
-                @option-select="(e) => onExerciseSelect(e.value)"
-            />
-
             <div v-if="entries.length === 0" class="empty-state">
-                No exercises added yet. Search above to get started.
+                No exercises added yet. Search below to get started.
             </div>
 
             <div class="entries-list">
@@ -188,6 +181,19 @@ function cancel() {
                     </button>
                 </div>
             </div>
+
+            <AutoComplete
+                ref="searchBarEl"
+                v-model="searchQuery"
+                :suggestions="filteredExercises"
+                optionLabel="name"
+                placeholder="Search and add exercise..."
+                class="exercise-search"
+                forceSelection
+                fluid
+                @complete="onSearch"
+                @option-select="(e) => onExerciseSelect(e.value)"
+            />
         </div>
 
         <template #footer>
@@ -216,7 +222,8 @@ function cancel() {
         :visible="showDeleteConfirm"
         header="Delete workout?"
         :modal="true"
-        :closable="false"
+        :closable="true"
+        @update:visible="() => showDeleteConfirm = false"
         :style="{width: '320px', maxWidth: '95vw'}"
     >
         <p class="confirm-text">This cannot be undone.</p>
@@ -353,7 +360,7 @@ function cancel() {
     background: none;
     border: none;
     cursor: pointer;
-    color: #C9A84C;
+    color: #C17A30;
     font-size: 0.8rem;
     font-weight: 600;
     padding: 8px 12px;

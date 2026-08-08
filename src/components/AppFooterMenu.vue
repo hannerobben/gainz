@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {DumbbellIcon, ChartNoAxesCombined, Grid2X2CheckIcon, UndoDot} from 'lucide-vue-next';
+import {DumbbellIcon, ChartNoAxesCombined, Grid2X2CheckIcon, UndoDot, Scale} from 'lucide-vue-next';
 import AppTabMenu from './AppTabMenu.vue';
 
 const items = [
@@ -7,6 +7,7 @@ const items = [
     { label: 'History', route: { name: 'History' }, icon: UndoDot },
     { label: 'Dashboard', route: { name: 'Dashboard' }, icon: ChartNoAxesCombined },
     { label: 'Exercises', route: { name: 'Exercises' }, icon: DumbbellIcon },
+    { label: 'Weight', route: { name: 'Weight' }, icon: Scale },
 ];
 </script>
 

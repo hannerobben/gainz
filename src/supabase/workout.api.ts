@@ -20,10 +20,13 @@ export interface SessionStats {
 export interface ExerciseProgression {
     exerciseId: string;
     exerciseName: string;
+    category: string;
+    isBodyweight: boolean;
     dataPoints: E1RMDataPoint[];
     lastTrained: string;
     currentStats: SessionStats;
     eightWeeksAgoStats: SessionStats | null;
+    allTimePr: { value: number; label: string };
 }
 
 export class WorkoutApi {
@@ -34,7 +37,7 @@ export class WorkoutApi {
                 load,
                 reps,
                 workout:workouts!inner(date, user_id),
-                exercise:strength_exercises!inner(id, name)
+                exercise:strength_exercises!inner(id, name, equipment, category)
             `)
             .eq('workout.user_id', userId)
             .eq('workout.type', 'strength')
@@ -52,16 +55,17 @@ export class WorkoutApi {
             sets: { load: number; reps: number }[];
         };
 
-        const byExercise = new Map<string, { name: string; byDate: Map<string, DateEntry> }>();
+        const byExercise = new Map<string, { name: string; equipment: string; category: string; byDate: Map<string, DateEntry> }>();
 
         for (const row of data) {
-            const exercise = row.exercise as unknown as { id: string; name: string };
+            const exercise = row.exercise as unknown as { id: string; name: string; equipment: string; category: string };
             const workout = row.workout as unknown as { date: string };
-            const e1rm = estimatedOneRepMax(row.load!, row.reps!);
-            const vol = setVolume(row.load!, row.reps!);
+            const bw = exercise.equipment === 'bodyweight';
+            const e1rm = bw ? 0 : estimatedOneRepMax(row.load!, row.reps!);
+            const vol = bw ? row.reps! : setVolume(row.load!, row.reps!);
 
             if (!byExercise.has(exercise.id)) {
-                byExercise.set(exercise.id, { name: exercise.name, byDate: new Map() });
+                byExercise.set(exercise.id, { name: exercise.name, equipment: exercise.equipment, category: exercise.category, byDate: new Map() });
             }
 
             const entry = byExercise.get(exercise.id)!;
@@ -69,7 +73,7 @@ export class WorkoutApi {
 
             if (!dateEntry) {
                 entry.byDate.set(workout.date, {
-                    bestE1rm: Math.round(e1rm * 10) / 10,
+                    bestE1rm: bw ? row.reps! : Math.round(e1rm * 10) / 10,
                     bestSetLoad: row.load!,
                     bestSetReps: row.reps!,
                     totalVolume: vol,
@@ -78,8 +82,8 @@ export class WorkoutApi {
             } else {
                 dateEntry.totalVolume += vol;
                 dateEntry.sets.push({ load: row.load!, reps: row.reps! });
-                if (e1rm > dateEntry.bestE1rm) {
-                    dateEntry.bestE1rm = Math.round(e1rm * 10) / 10;
+                if (bw ? row.reps! > dateEntry.bestSetReps : e1rm > dateEntry.bestE1rm) {
+                    dateEntry.bestE1rm = bw ? row.reps! : Math.round(e1rm * 10) / 10;
                     dateEntry.bestSetLoad = row.load!;
                     dateEntry.bestSetReps = row.reps!;
                 }
@@ -88,7 +92,8 @@ export class WorkoutApi {
 
         const targetMs = Date.now() - 56 * 24 * 60 * 60 * 1000;
 
-        return Array.from(byExercise.entries()).map(([id, { name, byDate }]) => {
+        return Array.from(byExercise.entries()).map(([id, { name, equipment, category, byDate }]) => {
+            const isBodyweight = equipment === 'bodyweight';
             const dataPoints: E1RMDataPoint[] = Array.from(byDate.entries()).map(([date, s]) => ({
                 date,
                 e1rm: s.bestE1rm,
@@ -123,13 +128,24 @@ export class WorkoutApi {
                 };
             }
 
+            const prValue = isBodyweight
+                ? Math.max(...dataPoints.map(dp => dp.bestSetReps))
+                : Math.max(...dataPoints.map(dp => dp.bestSetLoad));
+            const allTimePr = {
+                value: prValue,
+                label: isBodyweight ? `${prValue} reps` : `${prValue} kg`,
+            };
+
             return {
                 exerciseId: id,
                 exerciseName: name,
+                category,
+                isBodyweight,
                 dataPoints,
                 lastTrained: last.date,
                 currentStats,
                 eightWeeksAgoStats,
+                allTimePr,
             };
         });
     }

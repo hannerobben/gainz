@@ -11,6 +11,13 @@ function kgDelta(current: number, past: number): { text: string; cls: string } {
     return { text: '—', cls: 'neutral' };
 }
 
+function repDelta(current: number, past: number): { text: string; cls: string } {
+    const diff = current - past;
+    if (diff > 0) return { text: `↑ +${diff} reps`, cls: 'positive' };
+    if (diff < 0) return { text: `↓ ${Math.abs(diff)} reps`, cls: 'negative' };
+    return { text: '—', cls: 'neutral' };
+}
+
 function pctDelta(current: number, past: number): { text: string; cls: string } {
     if (past === 0) return { text: '—', cls: 'neutral' };
     const pct = Math.round(((current - past) / past) * 100);
@@ -19,21 +26,22 @@ function pctDelta(current: number, past: number): { text: string; cls: string } 
     return { text: '—', cls: 'neutral' };
 }
 
-const stats = computed(() => {
+type StatEntry = { value: string; delta: { text: string; cls: string } | null };
+
+const bwStats = computed(() => {
     const { currentStats: c, eightWeeksAgoStats: p } = props.progression;
     return {
-        bestSet: {
-            value: `${c.bestSetLoad} kg × ${c.bestSetReps}`,
-            delta: p ? kgDelta(c.bestSetLoad, p.bestSetLoad) : null,
-        },
-        e1rm: {
-            value: `${c.e1rm} kg`,
-            delta: p ? kgDelta(c.e1rm, p.e1rm) : null,
-        },
-        volume: {
-            value: c.totalVolume.toLocaleString() + ' kg',
-            delta: p ? pctDelta(c.totalVolume, p.totalVolume) : null,
-        },
+        maxReps: { value: `${c.bestSetReps} reps`, delta: p ? repDelta(c.bestSetReps, p.bestSetReps) : null } as StatEntry,
+        totalReps: { value: c.totalVolume.toLocaleString() + ' reps', delta: p ? pctDelta(c.totalVolume, p.totalVolume) : null } as StatEntry,
+    };
+});
+
+const weightedStats = computed(() => {
+    const { currentStats: c, eightWeeksAgoStats: p } = props.progression;
+    return {
+        bestSet: { value: `${c.bestSetLoad} kg × ${c.bestSetReps}`, delta: p ? kgDelta(c.bestSetLoad, p.bestSetLoad) : null } as StatEntry,
+        e1rm: { value: `${c.e1rm} kg`, delta: p ? kgDelta(c.e1rm, p.e1rm) : null } as StatEntry,
+        volume: { value: c.totalVolume.toLocaleString() + ' kg', delta: p ? pctDelta(c.totalVolume, p.totalVolume) : null } as StatEntry,
     };
 });
 </script>
@@ -42,13 +50,37 @@ const stats = computed(() => {
     <div class="card-stats">
         <div class="card-stats__heading">Current Performance</div>
 
-        <div class="card-stats__cols">
+        <div v-if="progression.isBodyweight" class="card-stats__cols card-stats__cols--2">
+            <div class="card-stats__col">
+                <div class="card-stats__label">Max Reps</div>
+                <div class="card-stats__value">{{ bwStats.maxReps.value }}</div>
+                <template v-if="bwStats.maxReps.delta">
+                    <div :class="['card-stats__delta', `card-stats__delta--${bwStats.maxReps.delta.cls}`]">
+                        {{ bwStats.maxReps.delta.text }}
+                    </div>
+                    <div class="card-stats__since">vs 8 weeks ago</div>
+                </template>
+            </div>
+
+            <div class="card-stats__col">
+                <div class="card-stats__label">Total Reps</div>
+                <div class="card-stats__value">{{ bwStats.totalReps.value }}</div>
+                <template v-if="bwStats.totalReps.delta">
+                    <div :class="['card-stats__delta', `card-stats__delta--${bwStats.totalReps.delta.cls}`]">
+                        {{ bwStats.totalReps.delta.text }}
+                    </div>
+                    <div class="card-stats__since">vs 8 weeks ago</div>
+                </template>
+            </div>
+        </div>
+
+        <div v-else class="card-stats__cols">
             <div class="card-stats__col">
                 <div class="card-stats__label">Best Set</div>
-                <div class="card-stats__value">{{ stats.bestSet.value }}</div>
-                <template v-if="stats.bestSet.delta">
-                    <div :class="['card-stats__delta', `card-stats__delta--${stats.bestSet.delta.cls}`]">
-                        {{ stats.bestSet.delta.text }}
+                <div class="card-stats__value">{{ weightedStats.bestSet.value }}</div>
+                <template v-if="weightedStats.bestSet.delta">
+                    <div :class="['card-stats__delta', `card-stats__delta--${weightedStats.bestSet.delta.cls}`]">
+                        {{ weightedStats.bestSet.delta.text }}
                     </div>
                     <div class="card-stats__since">vs 8 weeks ago</div>
                 </template>
@@ -56,10 +88,10 @@ const stats = computed(() => {
 
             <div class="card-stats__col">
                 <div class="card-stats__label">Estimated 1RM</div>
-                <div class="card-stats__value">{{ stats.e1rm.value }}</div>
-                <template v-if="stats.e1rm.delta">
-                    <div :class="['card-stats__delta', `card-stats__delta--${stats.e1rm.delta.cls}`]">
-                        {{ stats.e1rm.delta.text }}
+                <div class="card-stats__value">{{ weightedStats.e1rm.value }}</div>
+                <template v-if="weightedStats.e1rm.delta">
+                    <div :class="['card-stats__delta', `card-stats__delta--${weightedStats.e1rm.delta.cls}`]">
+                        {{ weightedStats.e1rm.delta.text }}
                     </div>
                     <div class="card-stats__since">vs 8 weeks ago</div>
                 </template>
@@ -67,10 +99,10 @@ const stats = computed(() => {
 
             <div class="card-stats__col">
                 <div class="card-stats__label">Total Volume</div>
-                <div class="card-stats__value">{{ stats.volume.value }}</div>
-                <template v-if="stats.volume.delta">
-                    <div :class="['card-stats__delta', `card-stats__delta--${stats.volume.delta.cls}`]">
-                        {{ stats.volume.delta.text }}
+                <div class="card-stats__value">{{ weightedStats.volume.value }}</div>
+                <template v-if="weightedStats.volume.delta">
+                    <div :class="['card-stats__delta', `card-stats__delta--${weightedStats.volume.delta.cls}`]">
+                        {{ weightedStats.volume.delta.text }}
                     </div>
                     <div class="card-stats__since">vs 8 weeks ago</div>
                 </template>
@@ -96,6 +128,10 @@ const stats = computed(() => {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 4px;
+
+        &--2 {
+            grid-template-columns: repeat(2, 1fr);
+        }
     }
 
     &__col {

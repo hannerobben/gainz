@@ -16,6 +16,7 @@ import TrackingPage from "../pages/TrackingPage.vue";
 import ExercisesPage from "../pages/ExercisesPage.vue";
 import DashboardPage from "../pages/DashboardPage.vue";
 import HistoryPage from "../pages/HistoryPage.vue";
+import UserWeightPage from "../pages/UserWeightPage.vue";
 
 const routes = [
     {
@@ -33,6 +34,7 @@ const routes = [
             { path: 'dashboard', name: 'Dashboard', component: DashboardPage, meta: { title: 'Progress' } },
             { path: 'exercises', name: 'Exercises', component: ExercisesPage, meta: { title: 'Exercise Catalog' } },
             { path: 'history', name: 'History', component: HistoryPage, meta: { title: 'Workout History' } },
+            { path: 'weight', name: 'Weight', component: UserWeightPage, meta: { title: 'Weight Trackermak' } },
         ]
     }
 ];

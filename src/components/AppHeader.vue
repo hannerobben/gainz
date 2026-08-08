@@ -68,6 +68,7 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick));
     justify-content: center;
     color: #0a0d2e;
     border-bottom: 1px solid #dee2e6;
+    z-index: 40;
 }
 
 .header-title {

@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import {computed, nextTick, onMounted, ref, watch} from 'vue';
-import {ChevronLeft, ChevronRight, createLucideIcon, Dumbbell, Footprints} from 'lucide-vue-next';
-import {SportShoe as SportShoeIcon} from 'lucide';
-
-const SportShoe = createLucideIcon('SportShoe', SportShoeIcon as any);
+import {ChevronLeft, ChevronRight} from 'lucide-vue-next';
 import DayDetailDialog from '../components/DayDetailDialog.vue';
+import WorkoutTypeSelector from '../components/WorkoutTypeSelector.vue';
 import CreateStrengthWorkoutDialog from '../components/CreateStrengthWorkoutDialog.vue';
 import LogWalkDialog from '../components/LogWalkDialog.vue';
 import LogRunDialog from '../components/LogRunDialog.vue';
@@ -17,32 +15,7 @@ import type {Walk} from '../model/walk.contract.ts';
 import type {Run} from '../model/run.contract.ts';
 import {walkDotColor} from '../utils/walk-color.ts';
 
-const filters = [
-    {type: 'strength', icon: Dumbbell, bg: '#4A7FC1'},
-    {type: 'running', icon: SportShoe, bg: '#5A9E5A'},
-    {type: 'steps', icon: Footprints, bg: '#C17A30'}
-];
-
 const selectedFilters = ref(new Set<string>(['strength']));
-
-function toggleFilter(type: string) {
-    const next = new Set(selectedFilters.value);
-    if (type === 'steps') {
-        selectedFilters.value = new Set(['steps']);
-        return;
-    }
-    if (next.has('steps')) {
-        selectedFilters.value = new Set([type]);
-        return;
-    }
-    if (next.has(type)) {
-        next.delete(type);
-        if (next.size === 0) next.add(type);
-    } else {
-        next.add(type);
-    }
-    selectedFilters.value = next;
-}
 
 const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -238,17 +211,7 @@ const weeks = computed(() => {
 <template>
     <div class="tracking-page">
         <div class="sticky-header">
-            <div class="filter-row">
-                <button
-                    v-for="f in filters"
-                    :key="f.type"
-                    class="filter-circle"
-                    :style="{backgroundColor: f.bg, opacity: selectedFilters.has(f.type) ? 1 : 0.4}"
-                    @click="toggleFilter(f.type)"
-                >
-                    <component :is="f.icon" :size="20" color="white" />
-                </button>
-            </div>
+            <WorkoutTypeSelector v-model="selectedFilters" />
             <div class="year-selector">
                 <button class="year-btn" @click="selectedYear--">
                     <ChevronLeft :size="18" />
@@ -333,29 +296,12 @@ const weeks = computed(() => {
     top: 0;
     background: whitesmoke;
     z-index: 1;
-    padding: 10px 0 8px;
+    padding: 16px 0 8px;
     display: flex;
     flex-direction: column;
     gap: 8px;
 }
 
-.filter-row {
-    display: flex;
-    justify-content: center;
-    gap: 16px;
-}
-
-.filter-circle {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: opacity 0.15s;
-}
 
 .year-selector {
     display: flex;

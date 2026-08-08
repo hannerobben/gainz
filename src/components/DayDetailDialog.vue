@@ -27,7 +27,7 @@ const activities = [
         :visible="visible"
         :header="title"
         :modal="true"
-        :closable="false"
+        :closable="true"
         @update:visible="emit('close')"
     >
         <div class="activity-row">

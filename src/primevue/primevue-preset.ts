@@ -20,7 +20,7 @@ export const primevuePreset = definePreset(Aura, {
             100: '#F9EDCA',
             200: '#F2DC98',
             300: '#E9C95F',
-            400: '#C9A84C',
+            400: '#C17A30',
             500: '#A07828',
             600: '#7A5B1E',
             700: '#5A4015',
@@ -45,7 +45,7 @@ export const primevuePreset = definePreset(Aura, {
             colorScheme: {
                 light: {
                     content: {
-                        checkedBackground: '#C9A84C',
+                        checkedBackground: '#C17A30',
                         checkedHoverBackground: '#A07828',
                         checkedColor: '#ffffff'
                     }
@@ -68,10 +68,10 @@ export const primevuePreset = definePreset(Aura, {
                             activeColor: '#ffffff'
                         },
                         secondary: {
-                            background: '#C9A84C',
+                            background: '#C17A30',
                             hoverBackground: '#A07828',
                             activeBackground: '#7A5B1E',
-                            borderColor: '#C9A84C',
+                            borderColor: '#C17A30',
                             hoverBorderColor: '#A07828',
                             activeBorderColor: '#7A5B1E',
                             color: '#ffffff',
@@ -87,7 +87,7 @@ export const primevuePreset = definePreset(Aura, {
                             activeBackground: 'rgba(10, 13, 46, 0.16)'
                         },
                         secondary: {
-                            borderColor: '#C9A84C80',
+                            borderColor: '#C17A3080',
                             color: '#A07828',
                             hoverBackground: 'rgba(201, 168, 76, 0.08)',
                             activeBackground: 'rgba(201, 168, 76, 0.16)'

@@ -80,8 +80,9 @@ function cancel() {
         :visible="visible"
         :header="title"
         :modal="true"
-        :closable="false"
+        :closable="true"
         :style="{width: '320px', maxWidth: '95vw'}"
+        @update:visible="cancel"
     >
         <div class="run-form">
             <div class="field">
@@ -133,7 +134,8 @@ function cancel() {
         :visible="showDeleteConfirm"
         header="Delete run?"
         :modal="true"
-        :closable="false"
+        :closable="true"
+        @update:visible="() => showDeleteConfirm = false"
         :style="{width: '320px', maxWidth: '95vw'}"
     >
         <p class="confirm-text">This cannot be undone.</p>
@@ -174,6 +176,7 @@ function cancel() {
 .footer-actions {
     display: flex;
     gap: 8px;
+    margin-left: auto;
 }
 
 .confirm-text {

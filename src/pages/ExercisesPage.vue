@@ -4,6 +4,7 @@ import {storeToRefs} from 'pinia';
 import {useExercisesStore} from '../stores/exercises.store.ts';
 import type {ExerciseCategory, MovementPattern} from '../model/exercise.contract.ts';
 
+
 const exercisesStore = useExercisesStore();
 const {exercises} = storeToRefs(exercisesStore);
 
@@ -46,6 +47,7 @@ const grouped = computed(() => {
         patterns: [...map.get(cat)!.entries()].map(([pattern, items]) => ({pattern, items}))
     }));
 });
+
 </script>
 
 <template>
@@ -168,7 +170,7 @@ const grouped = computed(() => {
 }
 
 .tag-equipment {
-    background-color: #C9A84C;
+    background-color: #C17A30;
     color: #ffffff;
     border: none;
 }

@@ -1,48 +1,49 @@
 <script setup lang="ts">
-import {computed, ref, watch} from 'vue';
+import {ref, watch} from 'vue';
 import {useToast} from 'primevue/usetoast';
 import {useUsersStore} from '../stores/users.store.ts';
-import {WalksApi} from '../supabase/walks.api.ts';
-import type {Walk} from '../model/walk.contract.ts';
+import {WeightsApi} from '../supabase/weights.api.ts';
+import type {Weight} from '../model/weight.contract.ts';
 
-const props = defineProps<{date: Date | null; existingWalk: Walk | null}>();
+const props = defineProps<{visible: boolean; existingWeight: Weight | null}>();
 const emit = defineEmits<{close: []; saved: []}>();
-
-const visible = computed(() => props.date !== null);
-
-const title = computed(() => {
-    if (!props.date) return '';
-    return new Intl.DateTimeFormat('en-GB', {day: 'numeric', month: 'long', year: 'numeric'}).format(props.date);
-});
 
 const usersStore = useUsersStore();
 const toast = useToast();
 
-const stepCount = ref<number | null>(null);
+const date = ref<Date>(new Date());
+const weight = ref<number | null>(null);
 const saving = ref(false);
 const deleting = ref(false);
 const showDeleteConfirm = ref(false);
 
-watch(visible, isVisible => {
+watch(() => props.visible, isVisible => {
     if (isVisible) {
-        stepCount.value = props.existingWalk ? props.existingWalk.stepCount : null;
+        if (props.existingWeight) {
+            const [y, m, d] = props.existingWeight.date.split('-').map(Number);
+            date.value = new Date(y, m - 1, d);
+            weight.value = props.existingWeight.weight;
+        } else {
+            date.value = new Date();
+            weight.value = null;
+        }
     }
 });
 
 async function save() {
-    if (!props.date || stepCount.value === null) return;
+    if (weight.value === null) return;
     if (!usersStore.activeUser) {
-        toast.add({severity: 'error', summary: 'No active user', detail: 'Select a user to save walks.', life: 3000});
+        toast.add({severity: 'error', summary: 'No active user', detail: 'Select a user to save.', life: 3000});
         return;
     }
     saving.value = true;
     try {
-        if (props.existingWalk) {
-            await WalksApi.update(props.existingWalk.id, stepCount.value);
-            toast.add({severity: 'success', summary: 'Walk updated', life: 3000});
+        if (props.existingWeight) {
+            await WeightsApi.update(props.existingWeight.id, weight.value);
+            toast.add({severity: 'success', summary: 'Weight updated', life: 3000});
         } else {
-            await WalksApi.create(props.date, usersStore.activeUser.id, stepCount.value);
-            toast.add({severity: 'success', summary: 'Walk saved', life: 3000});
+            await WeightsApi.create(date.value, usersStore.activeUser.id, weight.value);
+            toast.add({severity: 'success', summary: 'Weight saved', life: 3000});
         }
         emit('saved');
     } catch (e) {
@@ -52,12 +53,12 @@ async function save() {
     }
 }
 
-async function deleteWalk() {
-    if (!props.existingWalk) return;
+async function deleteWeight() {
+    if (!props.existingWeight) return;
     deleting.value = true;
     try {
-        await WalksApi.delete(props.existingWalk.id);
-        toast.add({severity: 'success', summary: 'Walk deleted', life: 3000});
+        await WeightsApi.delete(props.existingWeight.id);
+        toast.add({severity: 'success', summary: 'Entry deleted', life: 3000});
         showDeleteConfirm.value = false;
         emit('saved');
     } catch (e) {
@@ -76,28 +77,40 @@ function cancel() {
     <Toast />
     <Dialog
         :visible="visible"
-        :header="title"
+        :header="existingWeight ? 'Edit weight' : 'Log weight'"
         :modal="true"
         :closable="true"
         :style="{width: '320px', maxWidth: '95vw'}"
         @update:visible="cancel"
     >
-        <div class="walk-form">
-            <label class="step-label">Steps</label>
-            <InputNumber
-                v-model="stepCount"
-                :min="0"
-                :max-fraction-digits="0"
-                placeholder="Enter step count"
-                fluid
-                autofocus
-            />
+        <div class="weight-form">
+            <div class="field">
+                <label>Date</label>
+                <DatePicker
+                    v-model="date"
+                    :disabled="!!existingWeight"
+                    date-format="dd/mm/yy"
+                    :max-date="new Date()"
+                    fluid
+                />
+            </div>
+            <div class="field">
+                <label>Weight (kg)</label>
+                <InputNumber
+                    v-model="weight"
+                    :min="0"
+                    :max-fraction-digits="1"
+                    placeholder="e.g. 75.5"
+                    fluid
+                    autofocus
+                />
+            </div>
         </div>
 
         <template #footer>
             <div class="footer-row">
                 <Button
-                    v-if="existingWalk"
+                    v-if="existingWeight"
                     label="Delete"
                     severity="danger"
                     text
@@ -106,9 +119,9 @@ function cancel() {
                 <div class="footer-actions">
                     <Button label="Cancel" severity="secondary" text @click="cancel" />
                     <Button
-                        :label="existingWalk ? 'Update' : 'Save'"
+                        :label="existingWeight ? 'Update' : 'Save'"
                         :loading="saving"
-                        :disabled="stepCount === null"
+                        :disabled="weight === null"
                         @click="save"
                     />
                 </div>
@@ -118,7 +131,7 @@ function cancel() {
 
     <Dialog
         :visible="showDeleteConfirm"
-        header="Delete walk?"
+        header="Delete entry?"
         :modal="true"
         :closable="true"
         @update:visible="() => showDeleteConfirm = false"
@@ -127,20 +140,26 @@ function cancel() {
         <p class="confirm-text">This cannot be undone.</p>
         <template #footer>
             <Button label="Cancel" severity="secondary" text @click="showDeleteConfirm = false" />
-            <Button label="Delete" severity="danger" :loading="deleting" @click="deleteWalk" />
+            <Button label="Delete" severity="danger" :loading="deleting" @click="deleteWeight" />
         </template>
     </Dialog>
 </template>
 
 <style scoped>
-.walk-form {
+.weight-form {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
     padding: 4px 0;
 }
 
-.step-label {
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.field label {
     font-size: 0.85rem;
     font-weight: 600;
     color: #5F5F5F;

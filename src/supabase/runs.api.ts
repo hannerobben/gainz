@@ -40,6 +40,17 @@ export class RunsApi {
         if (error) throw error;
     }
 
+    public static async getAll(userId: string): Promise<{date: string; duration: number; distance: number}[]> {
+        const {data, error} = await supabase
+            .from('runs')
+            .select('date, duration, distance')
+            .eq('user_id', userId)
+            .order('date', {ascending: true});
+
+        if (error || !data) return [];
+        return data.map(r => ({date: r.date as string, duration: r.duration as number, distance: Number(r.distance)}));
+    }
+
     public static async getDates(userId: string, year: number): Promise<{date: string; duration: number; distance: number}[]> {
         const {data, error} = await supabase
             .from('runs')
