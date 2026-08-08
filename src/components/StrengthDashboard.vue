@@ -54,6 +54,18 @@ function categoryLabel(cat: string): string {
     return prefix + cat.charAt(0).toUpperCase() + cat.slice(1);
 }
 
+const trainingStats = computed(() => {
+    const allDates = new Set<string>();
+    for (const p of progressions.value) {
+        for (const dp of p.dataPoints) allDates.add(dp.date);
+    }
+    const daysTrained = allDates.size;
+    const weeks = new Set([...allDates].map(d => dayjs(d).startOf('week').format('YYYY-MM-DD')));
+    const weeksTrained = weeks.size;
+    const avgPerWeek = weeksTrained > 0 ? +(daysTrained / weeksTrained).toFixed(1) : 0;
+    return {weeksTrained, daysTrained, avgPerWeek};
+});
+
 const varietyChartData = computed(() => {
     const counts = new Map<string, number>();
     for (const p of progressions.value) {
@@ -76,7 +88,7 @@ const varietyChartOptions = {
     cutout: '65%',
     plugins: {
         legend: {
-            position: 'right' as const,
+            position: 'left' as const,
             labels: {color: '#ffffff', font: {size: 12}, padding: 12, boxWidth: 12}
         },
         tooltip: {
@@ -146,10 +158,24 @@ function chartOptions(isBodyweight: boolean) {
 
     <template v-else>
         <div class="variety-card">
-            <div class="variety-card__label">Exercise Variety</div>
-            <div class="variety-card__total">{{ progressions.length }} exercises trained</div>
+
+            <div class="variety-card__stats">
+                <div class="variety-stat">
+                    <span class="variety-stat__label">Weeks trained</span>
+                    <span class="variety-stat__value">{{ trainingStats.weeksTrained }}</span>
+                </div>
+                <div class="variety-stat">
+                    <span class="variety-stat__label">Days trained</span>
+                    <span class="variety-stat__value">{{ trainingStats.daysTrained }}</span>
+                </div>
+                <div class="variety-stat">
+                    <span class="variety-stat__label">Avg / week</span>
+                    <span class="variety-stat__value">{{ trainingStats.avgPerWeek }}</span>
+                </div>
+            </div>
+          <div class="variety-card__label">Exercise Variety</div>
             <div class="variety-card__chart">
-                <Chart type="doughnut" :data="varietyChartData" :options="varietyChartOptions" />
+                <Chart type="doughnut" :data="varietyChartData" :options="varietyChartOptions" :height="120"/>
             </div>
         </div>
 
@@ -222,18 +248,41 @@ function chartOptions(isBodyweight: boolean) {
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: rgba(255, 255, 255, 0.5);
-    margin-bottom: 2px;
+    margin-bottom: 8px;
+    border-top: 1px solid #343434;
+    padding-top: 14px;
 }
 
-.variety-card__total {
+.variety-card__stats {
+    display: flex;
+    gap: 24px;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.variety-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.variety-stat__label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.variety-stat__value {
     font-size: 1.2rem;
     font-weight: 700;
-    margin-bottom: 12px;
+    color: #ffffff;
 }
 
 .variety-card__chart {
     position: relative;
-    height: 160px;
+    height: 120px;
 }
 
 .grid {

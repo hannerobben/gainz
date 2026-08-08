@@ -47,10 +47,15 @@ function onSearch(event: {query: string}) {
     filteredExercises.value = exercises.value.filter(e => e.name.toLowerCase().includes(q));
 }
 
-function onExerciseSelect(exercise: Exercise) {
+async function onExerciseSelect(exercise: Exercise) {
     if (entries.value.some(e => e.exercise.id === exercise.id)) return;
     entries.value.push({exercise, sets: [{load: null, reps: null}]});
     searchQuery.value = '';
+    await nextTick();
+    const newIndex = entries.value.length - 1;
+    setTimeout(() => {
+        firstLoadInputs.value[newIndex]?.$el?.querySelector('input')?.focus();
+    }, 0);
 }
 
 function removeEntry(index: number) {
@@ -58,6 +63,7 @@ function removeEntry(index: number) {
 }
 
 const searchBarEl = ref<{ $el: HTMLElement } | null>(null);
+const firstLoadInputs = ref<any[]>([]);
 
 async function addSet(entry: WorkoutExerciseEntry) {
     const last = entry.sets[entry.sets.length - 1];
@@ -151,6 +157,7 @@ function cancel() {
                         <div v-for="(set, si) in entry.sets" :key="si" class="set-row">
                             <span class="col-set set-number">{{ si + 1 }}</span>
                             <InputNumber
+                                :ref="si === 0 ? (el: any) => { if (el) firstLoadInputs[ei] = el } : undefined"
                                 v-model="(set as WorkoutSet).load"
                                 class="col-load"
                                 :min="0"
