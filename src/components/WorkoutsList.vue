@@ -131,7 +131,7 @@ function onSaved() {
     align-items: baseline;
     gap: 8px;
     border-top: 1px solid var(--p-content-border-color);
-    padding: 2px 0;
+    padding: 4px 0 0;
 
     &:first-child {
         border-top: none;
