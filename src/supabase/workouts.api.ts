@@ -1,5 +1,5 @@
 import {supabase} from './supabase.ts';
-import type {Workout, WorkoutExerciseEntry} from '../model/workout.contract.ts';
+import type {Workout, WorkoutExerciseEntry, WorkoutSet} from '../model/workout.contract.ts';
 import type {Exercise} from '../model/exercise.contract.ts';
 
 function toLocalDateStr(date: Date): string {
@@ -132,6 +132,26 @@ export class WorkoutsApi {
     public static async delete(workoutId: string): Promise<void> {
         const {error} = await supabase.from('workouts').delete().eq('id', workoutId);
         if (error) throw error;
+    }
+
+    public static async getLastSetsForExercise(userId: string, exerciseId: string): Promise<WorkoutSet[]> {
+        const {data, error} = await supabase
+            .from('workout_exercise_sets')
+            .select('load, reps, set_number, workout:workouts!inner(date, user_id)')
+            .eq('workout.user_id', userId)
+            .eq('exercise_id', exerciseId)
+            .eq('workout.type', 'strength')
+            .order('workout(date)', {ascending: false})
+            .order('set_number', {ascending: true});
+
+        if (error || !data || data.length === 0) return [];
+
+        type RawRow = {load: number | null; reps: number | null; set_number: number; workout: {date: string}};
+        const rows = data as unknown as RawRow[];
+        const mostRecentDate = rows[0].workout.date;
+        return rows
+            .filter(r => r.workout.date === mostRecentDate)
+            .map(r => ({load: r.load, reps: r.reps}));
     }
 
     public static async getDates(userId: string, year: number): Promise<{date: string; type: string}[]> {

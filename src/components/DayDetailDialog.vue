@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {computed} from 'vue';
 import {createLucideIcon, Dumbbell, Footprints} from 'lucide-vue-next';
+import {SECONDARY_COLOR} from '../colors.ts';
 import {SportShoe as SportShoeIcon} from 'lucide';
 
 const SportShoe = createLucideIcon('SportShoe', SportShoeIcon as any);
@@ -18,7 +19,7 @@ const title = computed(() => {
 const activities = [
     {icon: Dumbbell, bg: '#4A7FC1', type: 'strength', action: () => emit('open-strength-workout')},
     {icon: SportShoe, bg: '#5A9E5A', type: 'running', action: () => emit('open-run')},
-    {icon: Footprints, bg: '#C17A30', type: 'steps', action: () => emit('open-walk')}
+    {icon: Footprints, bg: SECONDARY_COLOR, type: 'steps', action: () => emit('open-walk')}
 ];
 </script>
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {ref, computed, onMounted, watch} from 'vue';
 import {Crown} from 'lucide-vue-next';
+import {SECONDARY_COLOR} from '../colors.ts';
 import {useUsersStore} from '../stores/users.store.ts';
 import {RunsApi} from '../supabase/runs.api.ts';
 import dayjs from 'dayjs';
@@ -42,8 +43,8 @@ const summaryChartData = computed(() => ({
     datasets: [{
         label: 'Distance (km)',
         data: runs.value.map(r => r.distance),
-        borderColor: '#C17A30',
-        pointBackgroundColor: '#C17A30',
+        borderColor: SECONDARY_COLOR,
+        pointBackgroundColor: SECONDARY_COLOR,
         fill: false,
         tension: 0.3,
         pointRadius: 3,
@@ -148,7 +149,7 @@ const weeklyBarData = computed(() => {
         labels: entries.map(([k]) => dayjs(k).format('MMM D')),
         datasets: [{
             data: entries.map(([, v]) => v),
-            backgroundColor: '#C17A30',
+            backgroundColor: SECONDARY_COLOR,
             borderRadius: 4,
             borderSkipped: false,
         }],
@@ -226,7 +227,7 @@ function pace(run: RunEntry): string {
         <div class="metrics-card">
             <div class="metrics-section">
                 <div class="metrics-section__heading">
-                    <Crown :size="16" color="#C17A30" />
+                    <Crown :size="16" :color="SECONDARY_COLOR" />
                     <span>Records</span>
                 </div>
                 <div class="metrics-section__items">
@@ -300,7 +301,7 @@ function pace(run: RunEntry): string {
 }
 
 .summary-card {
-    background: #0a0d2e;
+    background: var(--primary-color);
     border-radius: 12px;
     padding: 16px;
     color: #ffffff;
@@ -386,7 +387,7 @@ function pace(run: RunEntry): string {
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: #C17A30;
+    color: var(--secondary-color);
     margin-bottom: 10px;
 }
 
@@ -417,7 +418,7 @@ function pace(run: RunEntry): string {
 .metrics-item__value {
     font-size: 1.5rem;
     font-weight: 700;
-    color: #0a0d2e;
+    color: var(--primary-color);
 }
 
 .metrics-item__unit {

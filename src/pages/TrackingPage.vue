@@ -317,7 +317,7 @@ const weeks = computed(() => {
     padding: 4px;
     display: flex;
     align-items: center;
-    color: #0a0d2e;
+    color: var(--primary-color);
     border-radius: 50%;
     transition: background 0.15s;
 
@@ -338,7 +338,7 @@ const weeks = computed(() => {
 .year-label {
     font-size: 1rem;
     font-weight: 700;
-    color: #0a0d2e;
+    color: var(--primary-color);
     min-width: 48px;
     text-align: center;
 }
@@ -386,7 +386,7 @@ const weeks = computed(() => {
 }
 
 .month-label--current {
-    color: #0a0d2e;
+    color: var(--primary-color);
     font-weight: 700;
 }
 
@@ -420,11 +420,11 @@ const weeks = computed(() => {
 }
 
 .dot--today {
-    border-color: #0a0d2e !important;
+    border-color: var(--primary-color) !important;
     border-width: 2px;
 
     .dot-number {
-        color: #0a0d2e;
+        color: var(--primary-color);
         font-weight: 700;
     }
 }

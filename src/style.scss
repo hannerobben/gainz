@@ -1,20 +1,26 @@
+$primary-color: #0a0d2e;
+$secondary-color: #C17A30;
+
+
 :root {
     font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
     line-height: 1.5;
     font-weight: 400;
     background-color: white;
-    color: #0a0d2e;
+    color: $primary-color;
+    --primary-color: #{$primary-color};
+    --secondary-color: #{$secondary-color};
 }
 
 :root {
-    --p-primary-color: #0a0d2e !important;
+    --p-primary-color: #{$primary-color} !important;
     --p-primary-600: #080b26 !important;
-    --p-primary-500: #0a0d2e !important;
+    --p-primary-500: #{$primary-color} !important;
     --p-primary-400: #3D4494 !important;
     --p-primary-300: #747CBD !important;
 
-    --p-tabmenu-item-active-color: #0a0d2e !important;
-    --p-tabmenu-item-active-border-color: #0a0d2e !important;
+    --p-tabmenu-item-active-color: #{$primary-color} !important;
+    --p-tabmenu-item-active-border-color: #{$primary-color} !important;
 
     --p-card-body-padding: 12px !important;
 
@@ -22,6 +28,10 @@
 }
 
 .p-dialog-content { height: 100% }
+
+.p-inputtext::placeholder,
+.p-select-label.p-placeholder
+{ color: #D4D4D4!important; }
 
 
 .p-tabmenu-item-link {

@@ -1,19 +1,33 @@
 <script setup lang="ts">
 import {ref, computed, onMounted, reactive, watch} from 'vue';
 import {useUsersStore} from '../stores/users.store.ts';
+import {SECONDARY_COLOR} from '../colors.ts';
 import {WorkoutApi, type ExerciseProgression} from '../supabase/workout.api.ts';
 import ExerciseCardStats from './ExerciseCardStats.vue';
 import dayjs from 'dayjs';
-import {ChevronDown, ChevronUp} from 'lucide-vue-next';
+import {ChevronDown, ChevronUp, ChevronRight} from 'lucide-vue-next';
 
 const usersStore = useUsersStore();
 
 const progressions = ref<ExerciseProgression[]>([]);
 const loading = ref(true);
 const expandedHistory = reactive<Record<string, boolean>>({});
+const collapsedCards = reactive<Record<string, boolean>>({});
 
 function toggleHistory(id: string) {
     expandedHistory[id] = !expandedHistory[id];
+}
+
+function toggleCard(id: string) {
+    collapsedCards[id] = !collapsedCards[id];
+}
+
+function expandAll() {
+    for (const p of progressions.value) collapsedCards[p.exerciseId] = false;
+}
+
+function collapseAll() {
+    for (const p of progressions.value) collapsedCards[p.exerciseId] = true;
 }
 
 function daysAgoLabel(date: string): string {
@@ -45,7 +59,7 @@ function formatSets(sets: {load: number; reps: number}[], isBodyweight: boolean)
 const CATEGORY_COLORS: Record<string, string> = {
     push: '#4A7FC1',
     pull: '#5A9E5A',
-    legs: '#C17A30',
+    legs: SECONDARY_COLOR,
     core: '#ddb160'
 };
 
@@ -116,8 +130,8 @@ function chartData(progression: ExerciseProgression) {
         datasets: [{
             label: 'e1RM (kg)',
             data: progression.dataPoints.map(p => p.e1rm),
-            borderColor: '#C17A30',
-            pointBackgroundColor: '#C17A30',
+            borderColor: SECONDARY_COLOR,
+            pointBackgroundColor: SECONDARY_COLOR,
             fill: false,
             tension: 0.3,
             pointRadius: 4,
@@ -179,43 +193,58 @@ function chartOptions(isBodyweight: boolean) {
             </div>
         </div>
 
+        <div class="exercises-header">
+            <span class="exercises-title">Exercises</span>
+            <div class="exercises-actions">
+                <button class="action-btn" @click="expandAll">Expand all</button>
+                <span class="actions-divider">|</span>
+                <button class="action-btn" @click="collapseAll">Collapse all</button>
+            </div>
+        </div>
+
         <div class="grid">
-            <Card v-for="progression in progressions" :key="progression.exerciseId">
+            <Card v-for="progression in progressions" :key="progression.exerciseId" :class="{'card-collapsed': collapsedCards[progression.exerciseId]}">
                 <template #title>
-                    <div class="card-title">
-                        <span>{{ progression.exerciseName }}</span>
+                    <div class="card-title" @click="toggleCard(progression.exerciseId)">
+                        <div class="card-title-left">
+                            <ChevronRight v-if="collapsedCards[progression.exerciseId]" :size="16" class="card-chevron" />
+                            <ChevronDown v-else :size="16" class="card-chevron" />
+                            <span>{{ progression.exerciseName }}</span>
+                        </div>
                         <span class="pr-badge">PR {{ progression.allTimePr.label }}</span>
                     </div>
                 </template>
                 <template #content>
-                    <ExerciseCardStats :progression="progression" />
-                    <div class="chart-heading">Estimated 1RM Evolution</div>
-                    <div class="chart-wrapper">
-                        <Chart type="line" :data="chartData(progression)" :options="chartOptions(progression.isBodyweight)" />
-                    </div>
+                    <div v-if="!collapsedCards[progression.exerciseId]">
+                        <ExerciseCardStats :progression="progression" />
+                        <div class="chart-heading">Estimated 1RM Evolution</div>
+                        <div class="chart-wrapper">
+                            <Chart type="line" :data="chartData(progression)" :options="chartOptions(progression.isBodyweight)" />
+                        </div>
 
-                    <div class="footer">
-                        <div class="last-trained">Last trained: {{ daysAgoLabel(progression.lastTrained) }}</div>
-                        <button class="history-toggle" @click="toggleHistory(progression.exerciseId)">
-                            <span>Training History</span>
-                            <ChevronUp v-if="expandedHistory[progression.exerciseId]" :size="14" />
-                            <ChevronDown v-else :size="14" />
-                        </button>
-                        <div v-if="expandedHistory[progression.exerciseId]" class="history">
-                            <div class="history-header">
-                                <span>Date</span>
-                                <span>Sets</span>
-                            </div>
-                            <div
-                                v-for="dp in [...progression.dataPoints].reverse()"
-                                :key="dp.date"
-                                class="history-row"
-                            >
-                                <span>{{ formatDate(dp.date) }}</span>
-                                <div class="history-sets">
-                                    <div v-for="(set, i) in formatSets(dp.sets, progression.isBodyweight)" :key="i" class="history-set">
-                                        <span>{{ set.text }}</span>
-                                        <span v-if="set.badge" class="set-badge">×{{ set.badge }}</span>
+                        <div class="footer">
+                            <div class="last-trained">Last trained: {{ daysAgoLabel(progression.lastTrained) }}</div>
+                            <button class="history-toggle" @click="toggleHistory(progression.exerciseId)">
+                                <span>Training History</span>
+                                <ChevronUp v-if="expandedHistory[progression.exerciseId]" :size="14" />
+                                <ChevronDown v-else :size="14" />
+                            </button>
+                            <div v-if="expandedHistory[progression.exerciseId]" class="history">
+                                <div class="history-header">
+                                    <span>Date</span>
+                                    <span>Sets</span>
+                                </div>
+                                <div
+                                    v-for="dp in [...progression.dataPoints].reverse()"
+                                    :key="dp.date"
+                                    class="history-row"
+                                >
+                                    <span>{{ formatDate(dp.date) }}</span>
+                                    <div class="history-sets">
+                                        <div v-for="(set, i) in formatSets(dp.sets, progression.isBodyweight)" :key="i" class="history-set">
+                                            <span>{{ set.text }}</span>
+                                            <span v-if="set.badge" class="set-badge">×{{ set.badge }}</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -235,7 +264,7 @@ function chartOptions(isBodyweight: boolean) {
 }
 
 .variety-card {
-    background: #0a0d2e;
+    background: var(--primary-color);
     border-radius: 12px;
     padding: 16px;
     color: #ffffff;
@@ -381,11 +410,67 @@ function chartOptions(isBodyweight: boolean) {
     border-top: 1px solid var(--p-content-border-color);
 }
 
+.exercises-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.exercises-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--p-text-muted-color);
+}
+
+.exercises-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.actions-divider {
+    color: var(--p-text-muted-color);
+    font-size: 0.7rem;
+    opacity: 0.4;
+}
+
+.action-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: lowercase;
+    color: #afafaf;
+}
+
 .card-title {
     display: flex;
     align-items: center;
     justify-content: space-between;
     width: 100%;
+    cursor: pointer;
+    user-select: none;
+}
+
+.card-title-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.card-chevron {
+    flex-shrink: 0;
+    color: var(--p-text-muted-color);
+}
+
+:deep(.card-collapsed .p-card-body) {
+    gap: 0 !important;
 }
 
 .pr-badge {
@@ -393,7 +478,7 @@ function chartOptions(isBodyweight: boolean) {
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: #C17A30;
+    color: var(--secondary-color);
     background: rgba(201, 168, 76, 0.12);
     border: 1px solid rgba(201, 168, 76, 0.35);
     border-radius: 999px;

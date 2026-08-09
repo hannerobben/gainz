@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {ref, computed, onMounted, watch} from 'vue';
 import {ChevronLeft, ChevronRight} from 'lucide-vue-next';
+import {SECONDARY_COLOR} from '../colors.ts';
 import {useUsersStore} from '../stores/users.store.ts';
 import {WalksApi} from '../supabase/walks.api.ts';
 import dayjs from 'dayjs';
@@ -81,7 +82,7 @@ const chartData = computed(() => ({
         {
             type: 'bar' as const,
             data: dailySteps.value,
-            backgroundColor: dailySteps.value.map(s => s >= 10000 ? '#C17A30' : 'rgba(193, 122, 48, 0.5)'),
+            backgroundColor: dailySteps.value.map(s => s >= 10000 ? SECONDARY_COLOR : 'rgba(193, 122, 48, 0.5)'),
             borderRadius: 2,
             borderSkipped: false,
         },
@@ -228,7 +229,7 @@ function fmt(n: number): string {
     padding: 4px;
     display: flex;
     align-items: center;
-    color: #0a0d2e;
+    color: var(--primary-color);
     border-radius: 50%;
     transition: background 0.15s;
 }
@@ -249,13 +250,13 @@ function fmt(n: number): string {
 .year-label {
     font-size: 1rem;
     font-weight: 700;
-    color: #0a0d2e;
+    color: var(--primary-color);
     min-width: 48px;
     text-align: center;
 }
 
 .summary-card {
-    background: #0a0d2e;
+    background: var(--primary-color);
     border-radius: 12px;
     padding: 16px;
     color: #ffffff;

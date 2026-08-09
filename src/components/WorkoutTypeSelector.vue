@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {createLucideIcon, Dumbbell, Footprints} from 'lucide-vue-next';
 import {SportShoe as SportShoeIcon} from 'lucide';
+import {SECONDARY_COLOR} from '../colors.ts';
 
 const SportShoe = createLucideIcon('SportShoe', SportShoeIcon as any);
 
@@ -16,7 +17,7 @@ const emit = defineEmits<{
 const filters = [
     {type: 'strength', icon: Dumbbell, bg: '#4A7FC1'},
     {type: 'running', icon: SportShoe, bg: '#5A9E5A'},
-    {type: 'steps', icon: Footprints, bg: '#C17A30'}
+    {type: 'steps', icon: Footprints, bg: SECONDARY_COLOR}
 ];
 
 function toggleFilter(type: string) {

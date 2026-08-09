@@ -66,7 +66,7 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick));
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #0a0d2e;
+    color: var(--primary-color);
     border-bottom: 1px solid #dee2e6;
     z-index: 40;
 }
@@ -89,7 +89,7 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick));
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: #0a0d2e;
+    background: var(--primary-color);
     color: #ffffff;
     border: none;
     cursor: pointer;
@@ -122,7 +122,7 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick));
     cursor: pointer;
     text-align: left;
     font-size: 0.85rem;
-    color: #0a0d2e;
+    color: var(--primary-color);
     white-space: nowrap;
 
     &:hover {

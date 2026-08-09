@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {ref, computed, onMounted, watch} from 'vue';
 import {Plus} from 'lucide-vue-next';
+import {SECONDARY_COLOR} from '../colors.ts';
 import {useUsersStore} from '../stores/users.store.ts';
 import {WeightsApi} from '../supabase/weights.api.ts';
 import type {Weight} from '../model/weight.contract.ts';
@@ -53,8 +54,8 @@ const chartData = computed(() => ({
     datasets: [{
         label: 'Weight (kg)',
         data: weights.value.map(w => w.weight),
-        borderColor: '#C17A30',
-        pointBackgroundColor: '#C17A30',
+        borderColor: SECONDARY_COLOR,
+        pointBackgroundColor: SECONDARY_COLOR,
         fill: false,
         tension: 0.3,
         pointRadius: 3,
@@ -166,7 +167,7 @@ function formatDate(date: string): string {
 }
 
 .summary-card {
-    background: #0a0d2e;
+    background: var(--primary-color);
     border-radius: 12px;
     padding: 16px;
     color: #ffffff;
@@ -259,7 +260,7 @@ function formatDate(date: string): string {
     width: 52px;
     height: 52px;
     border-radius: 50%;
-    background: #C17A30;
+    background: var(--secondary-color);
     color: #ffffff;
     border: none;
     cursor: pointer;

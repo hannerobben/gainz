@@ -64,7 +64,7 @@ a {
 }
 
 a.tab-active {
-    background: #0a0d2e;
+    background: var(--primary-color);
     color: white;
 }
 

@@ -5,9 +5,11 @@ import {X, Plus} from 'lucide-vue-next';
 import {useToast} from 'primevue/usetoast';
 import {useExercisesStore} from '../stores/exercises.store.ts';
 import {useUsersStore} from '../stores/users.store.ts';
+import {useWorkoutTemplatesStore} from '../stores/workout-templates.store.ts';
 import {WorkoutsApi} from '../supabase/workouts.api.ts';
 import type {Exercise} from '../model/exercise.contract.ts';
 import type {Workout, WorkoutExerciseEntry, WorkoutSet} from '../model/workout.contract.ts';
+import type {WorkoutTemplate} from '../model/workout-template.contract.ts';
 
 const props = defineProps<{date: Date | null; existingWorkout: Workout | null}>();
 const emit = defineEmits<{close: []; saved: []}>();
@@ -26,7 +28,18 @@ if (exercises.value.length === 0) exercisesStore.getAll();
 const usersStore = useUsersStore();
 const toast = useToast();
 
+const templatesStore = useWorkoutTemplatesStore();
+const {templates} = storeToRefs(templatesStore);
+const selectedTemplate = ref<WorkoutTemplate | null>(null);
+
+watch(
+    () => usersStore.activeUser,
+    user => { if (user) templatesStore.getAll(user.id); },
+    {immediate: true}
+);
+
 const entries = ref<WorkoutExerciseEntry[]>([]);
+const lastSetsMap = ref<Map<string, WorkoutSet[]>>(new Map());
 const searchQuery = ref('');
 const saving = ref(false);
 const deleting = ref(false);
@@ -49,7 +62,14 @@ function onSearch(event: {query: string}) {
 
 async function onExerciseSelect(exercise: Exercise) {
     if (entries.value.some(e => e.exercise.id === exercise.id)) return;
-    entries.value.push({exercise, sets: [{load: null, reps: null}]});
+    const lastSets = usersStore.activeUser
+        ? await WorkoutsApi.getLastSetsForExercise(usersStore.activeUser.id, exercise.id)
+        : [];
+    if (lastSets.length > 0) lastSetsMap.value.set(exercise.id, lastSets);
+    const initialSets: WorkoutSet[] = lastSets.length > 0
+        ? lastSets.map(() => ({load: null, reps: null}))
+        : [{load: null, reps: null}];
+    entries.value.push({exercise, sets: initialSets});
     searchQuery.value = '';
     await nextTick();
     const newIndex = entries.value.length - 1;
@@ -92,6 +112,7 @@ async function save() {
             toast.add({severity: 'success', summary: 'Workout saved', life: 3000});
         }
         entries.value = [];
+        lastSetsMap.value.clear();
         emit('saved');
     } catch (e) {
         toast.add({severity: 'error', summary: 'Save failed', detail: String(e), life: 4000});
@@ -108,6 +129,7 @@ async function deleteWorkout() {
         toast.add({severity: 'success', summary: 'Workout deleted', life: 3000});
         showDeleteConfirm.value = false;
         entries.value = [];
+        lastSetsMap.value.clear();
         emit('saved');
     } catch (e) {
         toast.add({severity: 'error', summary: 'Delete failed', detail: String(e), life: 4000});
@@ -116,9 +138,27 @@ async function deleteWorkout() {
     }
 }
 
+async function applyTemplate() {
+    if (!selectedTemplate.value) return;
+    for (const exercise of selectedTemplate.value.exercises) {
+        if (entries.value.some(e => e.exercise.id === exercise.id)) continue;
+        const lastSets = usersStore.activeUser
+            ? await WorkoutsApi.getLastSetsForExercise(usersStore.activeUser.id, exercise.id)
+            : [];
+        if (lastSets.length > 0) lastSetsMap.value.set(exercise.id, lastSets);
+        const initialSets: WorkoutSet[] = lastSets.length > 0
+            ? lastSets.map(() => ({load: null, reps: null}))
+            : [{load: null, reps: null}];
+        entries.value.push({exercise, sets: initialSets});
+    }
+    selectedTemplate.value = null;
+}
+
 function cancel() {
     entries.value = [];
+    lastSetsMap.value.clear();
     searchQuery.value = '';
+    selectedTemplate.value = null;
     emit('close');
 }
 </script>
@@ -162,14 +202,14 @@ function cancel() {
                                 class="col-load"
                                 :min="0"
                                 :maxFractionDigits="2"
-                                placeholder="—"
+                                :placeholder="lastSetsMap.get(entry.exercise.id)?.[si]?.load?.toString() ?? '—'"
                                 fluid
                             />
                             <InputNumber
                                 v-model="(set as WorkoutSet).reps"
                                 class="col-reps"
                                 :min="0"
-                                placeholder="—"
+                                :placeholder="lastSetsMap.get(entry.exercise.id)?.[si]?.reps?.toString() ?? '—'"
                                 fluid
                             />
                             <button
@@ -188,6 +228,24 @@ function cancel() {
                     </button>
                 </div>
             </div>
+
+            <div v-if="templates.length > 0 && entries.length === 0" class="template-row">
+                <Select
+                    v-model="selectedTemplate"
+                    :options="templates"
+                    optionLabel="name"
+                    placeholder="Choose a template..."
+                    class="template-select"
+                    fluid
+                />
+                <Button
+                    label="Add"
+                    :disabled="!selectedTemplate"
+                    @click="applyTemplate"
+                />
+            </div>
+
+            <div class="or" v-if="templates.length > 0 && entries.length === 0">OR</div>
 
             <AutoComplete
                 ref="searchBarEl"
@@ -278,7 +336,7 @@ function cancel() {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: #0a0d2e;
+    background: var(--primary-color);
     padding: 10px 12px;
 }
 
@@ -367,7 +425,7 @@ function cancel() {
     background: none;
     border: none;
     cursor: pointer;
-    color: #C17A30;
+    color: var(--secondary-color);
     font-size: 0.8rem;
     font-weight: 600;
     padding: 8px 12px;
@@ -395,5 +453,23 @@ function cancel() {
     margin: 0;
     color: #5F5F5F;
     font-size: 0.9rem;
+}
+
+.template-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.template-select {
+    flex: 1;
+}
+
+.or {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #9E9E9E;
 }
 </style>

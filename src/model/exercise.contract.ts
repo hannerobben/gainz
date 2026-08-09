@@ -28,4 +28,5 @@ export interface Exercise {
     movement_pattern: MovementPattern;
     muscle_groups: string[];
     equipment: Equipment;
+    how_to: string | null;
 }

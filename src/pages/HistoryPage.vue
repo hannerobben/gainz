@@ -4,6 +4,7 @@ import {useUsersStore} from '../stores/users.store.ts';
 import {WorkoutsApi} from '../supabase/workouts.api.ts';
 import type {Workout} from '../model/workout.contract.ts';
 import {Calendar} from 'lucide-vue-next';
+import ExerciseCategoryBadge from '../components/ExerciseCategoryBadge.vue';
 
 const usersStore = useUsersStore();
 const workouts = ref<Workout[]>([]);
@@ -39,9 +40,9 @@ function formatDate(dateStr: string): string {
 }
 
 function formatSet(load: number | null, reps: number | null): string {
-    if (load !== null && reps !== null) return `${load} kg × ${reps}`;
+    if (load && reps !== null) return `${load} kg × ${reps}`;
     if (reps !== null) return `× ${reps}`;
-    if (load !== null) return `${load} kg`;
+    if (load) return `${load} kg`;
     return '—';
 }
 
@@ -82,7 +83,10 @@ function formatSets(sets: {load: number | null; reps: number | null}[]): {text: 
                             <span>{{ formatDate(workout.date) }}</span>
                         </div>
                         <div v-for="entry in workout.entries" :key="entry.exercise.id" class="exercise-row">
-                            <span class="exercise-name">{{ entry.exercise.name }}</span>
+                            <div class="exercise-header">
+                                <span class="exercise-name">{{ entry.exercise.name }}</span>
+                                <ExerciseCategoryBadge :category="entry.exercise.category" />
+                            </div>
                             <div class="sets-row">
                                 <div v-for="(group, i) in formatSets(entry.sets)" :key="i" class="set-group">
                                     <span class="set-chip">{{ group.text }}</span>
@@ -148,13 +152,27 @@ function formatSets(sets: {load: number | null; reps: number | null}[]): {text: 
     gap: 6px;
     font-size: 0.95rem;
     font-weight: 700;
-    color: #0a0d2e;
+    color: var(--primary-color);
 }
 
 .exercise-row {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    border-top: 1px solid var(--p-content-border-color);
+    padding-top: 6px;
+}
+
+.workout-date + .exercise-row {
+    border-top: none;
+    padding-top: 0;
+}
+
+.exercise-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
 }
 
 .exercise-name {
@@ -162,6 +180,7 @@ function formatSets(sets: {load: number | null; reps: number | null}[]): {text: 
     font-weight: 600;
     color: #2E2E2E;
 }
+
 
 .sets-row {
     display: flex;
@@ -186,7 +205,7 @@ function formatSets(sets: {load: number | null; reps: number | null}[]): {text: 
     font-size: 0.75rem;
     font-weight: 500;
     color: #ffffff;
-    background: #C17A30;
+    background: var(--secondary-color);
     border-radius: 4px;
     padding: 2px 8px;
     white-space: nowrap;
