@@ -69,7 +69,7 @@ const chartOptions = {
         legend: {display: false},
         tooltip: {
             callbacks: {
-                label: (ctx: {parsed: {y: number}}) => ` ${ctx.parsed.y} kg`,
+                label: (ctx: {parsed: {y: number}}) => ` ${ctx.parsed.y.toFixed(1)} kg`,
             },
         },
     },
@@ -77,7 +77,7 @@ const chartOptions = {
         x: {display: false},
         y: {
             grid: {color: 'rgba(255,255,255,0.1)'},
-            ticks: {color: 'rgba(255,255,255,0.6)', callback: (v: number) => `${v} kg`},
+            ticks: {color: 'rgba(255,255,255,0.6)', callback: (v: number) => `${Number(v).toFixed(1)} kg`},
             border: {display: false},
         },
     },
