@@ -208,7 +208,7 @@ const scatterChartData = computed(() => {
     const points = runs.value
         .filter(r => totalMinutes(r) > 0 && r.distance > 0)
         .map(r => ({
-            x: r.distance,
+            x: Math.round(r.distance * 10) / 10,
             y: Math.round((r.distance / totalMinutes(r)) * 60 * 10) / 10,
             date: r.date,
         }));
@@ -262,12 +262,12 @@ const scatterChartOptions = {
     scales: {
         x: {
             grid: {color: '#f0f0f0'},
-            ticks: {font: {size: 10}, callback: (v: number) => `${v} km`},
+            ticks: {font: {size: 10}, callback: (v: number) => `${parseFloat(v.toFixed(1))} km`},
             border: {display: false},
         },
         y: {
             grid: {color: '#f0f0f0'},
-            ticks: {font: {size: 10}, callback: (v: number) => `${v}`},
+            ticks: {font: {size: 10}, callback: (v: number) => `${parseFloat(v.toFixed(1))}`},
             border: {display: false},
         },
     },

@@ -104,7 +104,10 @@ const selectedDateTypes = computed<string[]>(() => {
         selectedDate.value.getMonth(),
         selectedDate.value.getDate()
     );
-    return Array.from(workoutDates.value.get(key) ?? []);
+    const types = Array.from(workoutDates.value.get(key) ?? []);
+    if ((runDates.value.get(key) ?? 0) > 0) types.push('running');
+    if ((walkDates.value.get(key) ?? 0) > 0) types.push('steps');
+    return types;
 });
 
 watch(selectedYear, year => fetchWorkoutDates(year));
