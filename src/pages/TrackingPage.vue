@@ -15,7 +15,7 @@ import type {Walk} from '../model/walk.contract.ts';
 import type {Run} from '../model/run.contract.ts';
 import {walkDotColor} from '../utils/walk-color.ts';
 
-const selectedFilters = ref(new Set<string>(['strength']));
+const selectedFilters = ref(new Set<string>(['strength', 'running']));
 
 const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

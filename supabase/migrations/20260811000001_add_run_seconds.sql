@@ -1,0 +1,1 @@
+alter table public.runs add column seconds integer not null default 0;

@@ -19,6 +19,7 @@ const usersStore = useUsersStore();
 const toast = useToast();
 
 const duration = ref<number | null>(null);
+const seconds = ref<number | null>(null);
 const distance = ref<number | null>(null);
 const saving = ref(false);
 const deleting = ref(false);
@@ -27,12 +28,13 @@ const showDeleteConfirm = ref(false);
 watch(visible, isVisible => {
     if (isVisible) {
         duration.value = props.existingRun ? props.existingRun.duration : null;
+        seconds.value = props.existingRun ? props.existingRun.seconds : null;
         distance.value = props.existingRun ? props.existingRun.distance : null;
     }
 });
 
 async function save() {
-    if (!props.date || duration.value === null || distance.value === null) return;
+    if (!props.date || duration.value === null || seconds.value === null || distance.value === null) return;
     if (!usersStore.activeUser) {
         toast.add({severity: 'error', summary: 'No active user', detail: 'Select a user to save runs.', life: 3000});
         return;
@@ -40,10 +42,10 @@ async function save() {
     saving.value = true;
     try {
         if (props.existingRun) {
-            await RunsApi.update(props.existingRun.id, duration.value, distance.value);
+            await RunsApi.update(props.existingRun.id, duration.value, seconds.value, distance.value);
             toast.add({severity: 'success', summary: 'Run updated', life: 3000});
         } else {
-            await RunsApi.create(props.date, usersStore.activeUser.id, duration.value, distance.value);
+            await RunsApi.create(props.date, usersStore.activeUser.id, duration.value, seconds.value, distance.value);
             toast.add({severity: 'success', summary: 'Run saved', life: 3000});
         }
         emit('saved');
@@ -86,15 +88,26 @@ function cancel() {
     >
         <div class="run-form">
             <div class="field">
-                <label>Duration (min)</label>
-                <InputNumber
-                    v-model="duration"
-                    :min="0"
-                    :max-fraction-digits="0"
-                    placeholder="e.g. 30"
-                    fluid
-                    autofocus
-                />
+                <label>Duration</label>
+                <div class="duration-row">
+                    <InputNumber
+                        v-model="duration"
+                        :min="0"
+                        :max-fraction-digits="0"
+                        placeholder="min"
+                        fluid
+                        autofocus
+                    />
+                    <span class="duration-sep">:</span>
+                    <InputNumber
+                        v-model="seconds"
+                        :min="0"
+                        :max="59"
+                        :max-fraction-digits="0"
+                        placeholder="sec"
+                        fluid
+                    />
+                </div>
             </div>
             <div class="field">
                 <label>Distance (km)</label>
@@ -122,7 +135,7 @@ function cancel() {
                     <Button
                         :label="existingRun ? 'Update' : 'Save'"
                         :loading="saving"
-                        :disabled="duration === null || distance === null"
+                        :disabled="duration === null || seconds === null || distance === null"
                         @click="save"
                     />
                 </div>
@@ -158,6 +171,24 @@ function cancel() {
     display: flex;
     flex-direction: column;
     gap: 6px;
+}
+
+.duration-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    :deep(.p-inputnumber) {
+        flex: 1;
+        min-width: 0;
+    }
+}
+
+.duration-sep {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #5F5F5F;
+    line-height: 1;
 }
 
 .field label {

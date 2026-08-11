@@ -8,7 +8,7 @@ import dayjs from 'dayjs';
 
 const usersStore = useUsersStore();
 
-type RunEntry = {date: string; duration: number; distance: number};
+type RunEntry = {date: string; duration: number; seconds: number; distance: number};
 
 const runs = ref<RunEntry[]>([]);
 const loading = ref(true);
@@ -27,12 +27,16 @@ const totalDistance = computed(() =>
     Math.round(runs.value.reduce((sum, r) => sum + r.distance, 0) * 10) / 10
 );
 
+function totalMinutes(r: RunEntry): number {
+    return r.duration + r.seconds / 60;
+}
+
 const avgPace = computed(() => {
     if (runs.value.length === 0) return null;
-    const totalMinutes = runs.value.reduce((sum, r) => sum + r.duration, 0);
+    const totalMins = runs.value.reduce((sum, r) => sum + totalMinutes(r), 0);
     const totalKm = runs.value.reduce((sum, r) => sum + r.distance, 0);
     if (totalKm === 0) return null;
-    const paceMin = totalMinutes / totalKm;
+    const paceMin = totalMins / totalKm;
     const mins = Math.floor(paceMin);
     const secs = Math.round((paceMin - mins) * 60);
     return `${mins}:${String(secs).padStart(2, '0')}`;
@@ -66,7 +70,7 @@ const summaryChartOptions = {
         x: {display: false},
         y: {
             grid: {color: 'rgba(255,255,255,0.1)'},
-            ticks: {color: 'rgba(255,255,255,0.6)', callback: (v: number) => `${v} km`},
+            ticks: {color: 'rgba(255,255,255,0.6)', callback: (v: number) => `${parseFloat(v.toFixed(1))} km`},
             border: {display: false},
         },
     },
@@ -83,15 +87,15 @@ function formatRaceTime(minutes: number): string {
 const best5k = computed(() => {
     const eligible = runs.value.filter(r => r.distance >= 5);
     if (eligible.length === 0) return null;
-    const best = eligible.reduce((b, r) => (r.duration / r.distance) < (b.duration / b.distance) ? r : b);
-    return formatRaceTime((best.duration / best.distance) * 5);
+    const best = eligible.reduce((b, r) => (totalMinutes(r) / r.distance) < (totalMinutes(b) / b.distance) ? r : b);
+    return formatRaceTime((totalMinutes(best) / best.distance) * 5);
 });
 
 const best10k = computed(() => {
     const eligible = runs.value.filter(r => r.distance >= 10);
     if (eligible.length === 0) return null;
-    const best = eligible.reduce((b, r) => (r.duration / r.distance) < (b.duration / b.distance) ? r : b);
-    return formatRaceTime((best.duration / best.distance) * 10);
+    const best = eligible.reduce((b, r) => (totalMinutes(r) / r.distance) < (totalMinutes(b) / b.distance) ? r : b);
+    return formatRaceTime((totalMinutes(best) / best.distance) * 10);
 });
 
 const longestRun = computed(() => {
@@ -138,7 +142,9 @@ const weeklyBarData = computed(() => {
     const sorted = [...weekMap.keys()].sort();
     const entries: [string, number][] = [];
     let current = dayjs(sorted[0]).startOf('week');
-    const last = dayjs(sorted[sorted.length - 1]).startOf('week');
+    const lastRun = dayjs(sorted[sorted.length - 1]).startOf('week');
+    const thisWeek = dayjs().startOf('week');
+    const last = lastRun.isAfter(thisWeek) ? lastRun : thisWeek;
     while (!current.isAfter(last)) {
         const key = current.format('YYYY-MM-DD');
         entries.push([key, weekMap.get(key) ?? 0]);
@@ -181,19 +187,91 @@ function formatDate(date: string): string {
     return dayjs(date).format('MMM D, YYYY');
 }
 
-function formatDuration(minutes: number): string {
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+function formatDuration(run: RunEntry): string {
+    const totalSecs = run.duration * 60 + run.seconds;
+    const h = Math.floor(totalSecs / 3600);
+    const m = Math.floor((totalSecs % 3600) / 60);
+    const s = totalSecs % 60;
+    if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    return `${m}:${String(s).padStart(2, '0')}`;
 }
 
 function pace(run: RunEntry): string {
     if (run.distance === 0) return '—';
-    const paceMin = run.duration / run.distance;
+    const paceMin = totalMinutes(run) / run.distance;
     const mins = Math.floor(paceMin);
     const secs = Math.round((paceMin - mins) * 60);
     return `${mins}:${String(secs).padStart(2, '0')} /km`;
 }
+
+const scatterChartData = computed(() => {
+    const points = runs.value
+        .filter(r => totalMinutes(r) > 0 && r.distance > 0)
+        .map(r => ({
+            x: r.distance,
+            y: Math.round((r.distance / totalMinutes(r)) * 60 * 10) / 10,
+            date: r.date,
+        }));
+
+    const datasets: object[] = [{
+        data: points,
+        backgroundColor: SECONDARY_COLOR,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+    }];
+
+    if (points.length >= 2) {
+        const n = points.length;
+        const sumX = points.reduce((s, p) => s + p.x, 0);
+        const sumY = points.reduce((s, p) => s + p.y, 0);
+        const sumXY = points.reduce((s, p) => s + p.x * p.y, 0);
+        const sumX2 = points.reduce((s, p) => s + p.x * p.x, 0);
+        const m = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+        const b = (sumY - m * sumX) / n;
+        const xs = points.map(p => p.x);
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs);
+        datasets.push({
+            data: [{x: minX, y: m * minX + b}, {x: maxX, y: m * maxX + b}],
+            showLine: true,
+            borderColor: 'rgba(193, 122, 48, 0.45)',
+            borderWidth: 2,
+            borderDash: [5, 5],
+            pointRadius: 0,
+            fill: false,
+            tension: 0,
+        });
+    }
+
+    return {datasets};
+});
+
+const scatterChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+        legend: {display: false},
+        tooltip: {
+            filter: (item: {datasetIndex: number}) => item.datasetIndex === 0,
+            callbacks: {
+                label: (ctx: {raw: {x: number; y: number; date: string}}) =>
+                    ` ${dayjs(ctx.raw.date).format('MMM D')} · ${ctx.raw.x} km · ${ctx.raw.y} km/h`,
+            },
+        },
+    },
+    scales: {
+        x: {
+            grid: {color: '#f0f0f0'},
+            ticks: {font: {size: 10}, callback: (v: number) => `${v} km`},
+            border: {display: false},
+        },
+        y: {
+            grid: {color: '#f0f0f0'},
+            ticks: {font: {size: 10}, callback: (v: number) => `${v}`},
+            border: {display: false},
+        },
+    },
+};
 </script>
 
 <template>
@@ -207,7 +285,7 @@ function pace(run: RunEntry): string {
         <div class="summary-card">
             <div class="summary-card__stats">
                 <div class="summary-card__stat">
-                    <span class="summary-card__label">Total Distance</span>
+                    <span class="summary-card__label">Distance</span>
                     <span class="summary-card__value">{{ totalDistance }} <span class="summary-card__unit">km</span></span>
                 </div>
                 <div class="summary-card__stat">
@@ -215,7 +293,7 @@ function pace(run: RunEntry): string {
                     <span class="summary-card__value">{{ avgPace }} <span class="summary-card__unit">/km</span></span>
                 </div>
                 <div class="summary-card__stat">
-                    <span class="summary-card__label">Total Runs</span>
+                    <span class="summary-card__label">Runs</span>
                     <span class="summary-card__value">{{ runs.length }}</span>
                 </div>
             </div>
@@ -276,17 +354,24 @@ function pace(run: RunEntry): string {
             </div>
         </div>
 
+        <div class="scatter-card">
+            <div class="scatter-card__heading">Distance vs Speed</div>
+            <div class="scatter-card__chart">
+                <Chart type="scatter" :data="scatterChartData" :options="scatterChartOptions" />
+            </div>
+        </div>
+
         <div class="run-list">
             <div class="run-list__header">
                 <span>Date</span>
-                <span>Distance</span>
+                <span>KM</span>
                 <span>Time</span>
                 <span>Pace</span>
             </div>
             <div v-for="run in [...runs].reverse()" :key="run.date" class="run-list__row">
                 <span>{{ formatDate(run.date) }}</span>
                 <span>{{ run.distance }} km</span>
-                <span>{{ formatDuration(run.duration) }}</span>
+                <span>{{ formatDuration(run) }}</span>
                 <span>{{ pace(run) }}</span>
             </div>
         </div>
@@ -343,6 +428,28 @@ function pace(run: RunEntry): string {
 .summary-card__chart {
     position: relative;
     height: 160px;
+}
+
+.scatter-card {
+    background: var(--p-card-background);
+    border-radius: 12px;
+    border: 1px solid var(--p-content-border-color);
+    padding: 12px 14px 14px;
+    margin-bottom: 12px;
+}
+
+.scatter-card__heading {
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--p-text-muted-color);
+    margin-bottom: 10px;
+}
+
+.scatter-card__chart {
+    position: relative;
+    height: 180px;
 }
 
 .weekly-chart-card {

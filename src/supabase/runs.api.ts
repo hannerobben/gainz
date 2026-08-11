@@ -9,27 +9,27 @@ export class RunsApi {
     public static async getByDate(userId: string, date: Date): Promise<Run | null> {
         const {data, error} = await supabase
             .from('runs')
-            .select('id, duration, distance')
+            .select('id, duration, seconds, distance')
             .eq('user_id', userId)
             .eq('date', toLocalDateStr(date))
             .maybeSingle();
 
         if (error || !data) return null;
-        return {id: data.id as string, duration: data.duration as number, distance: Number(data.distance)};
+        return {id: data.id as string, duration: data.duration as number, seconds: (data.seconds as number) ?? 0, distance: Number(data.distance)};
     }
 
-    public static async create(date: Date, userId: string, duration: number, distance: number): Promise<void> {
+    public static async create(date: Date, userId: string, duration: number, seconds: number, distance: number): Promise<void> {
         const {error} = await supabase
             .from('runs')
-            .insert({user_id: userId, date: toLocalDateStr(date), duration, distance});
+            .insert({user_id: userId, date: toLocalDateStr(date), duration, seconds, distance});
 
         if (error) throw error;
     }
 
-    public static async update(id: string, duration: number, distance: number): Promise<void> {
+    public static async update(id: string, duration: number, seconds: number, distance: number): Promise<void> {
         const {error} = await supabase
             .from('runs')
-            .update({duration, distance})
+            .update({duration, seconds, distance})
             .eq('id', id);
 
         if (error) throw error;
@@ -40,26 +40,26 @@ export class RunsApi {
         if (error) throw error;
     }
 
-    public static async getAll(userId: string): Promise<{date: string; duration: number; distance: number}[]> {
+    public static async getAll(userId: string): Promise<{date: string; duration: number; seconds: number; distance: number}[]> {
         const {data, error} = await supabase
             .from('runs')
-            .select('date, duration, distance')
+            .select('date, duration, seconds, distance')
             .eq('user_id', userId)
             .order('date', {ascending: true});
 
         if (error || !data) return [];
-        return data.map(r => ({date: r.date as string, duration: r.duration as number, distance: Number(r.distance)}));
+        return data.map(r => ({date: r.date as string, duration: r.duration as number, seconds: (r.seconds as number) ?? 0, distance: Number(r.distance)}));
     }
 
-    public static async getDates(userId: string, year: number): Promise<{date: string; duration: number; distance: number}[]> {
+    public static async getDates(userId: string, year: number): Promise<{date: string; distance: number}[]> {
         const {data, error} = await supabase
             .from('runs')
-            .select('date, duration, distance')
+            .select('date, distance')
             .eq('user_id', userId)
             .gte('date', `${year}-01-01`)
             .lte('date', `${year}-12-31`);
 
         if (error || !data) return [];
-        return data.map(r => ({date: r.date as string, duration: r.duration as number, distance: Number(r.distance)}));
+        return data.map(r => ({date: r.date as string, distance: Number(r.distance)}));
     }
 }
