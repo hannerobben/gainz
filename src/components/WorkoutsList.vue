@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {onMounted, ref, watch} from 'vue';
+import {computed, onMounted, ref, watch} from 'vue';
 import {storeToRefs} from 'pinia';
 import {Plus} from 'lucide-vue-next';
 import {useUsersStore} from '../stores/users.store.ts';
@@ -11,6 +11,13 @@ import type {WorkoutTemplate} from '../model/workout-template.contract.ts';
 const usersStore = useUsersStore();
 const workoutTemplatesStore = useWorkoutTemplatesStore();
 const {templates} = storeToRefs(workoutTemplatesStore);
+
+const sortedTemplates = computed(() =>
+    [...templates.value].sort((a, b) => {
+        const dateDiff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        return dateDiff !== 0 ? dateDiff : a.name.localeCompare(b.name);
+    })
+);
 
 const dialogVisible = ref(false);
 const selectedTemplate = ref<WorkoutTemplate | null>(null);
@@ -47,7 +54,7 @@ function onSaved() {
         </div>
 
         <div v-else class="templates-grid">
-            <Card v-for="template in templates" :key="template.id" class="template-card" @click="openEdit(template)">
+            <Card v-for="template in sortedTemplates" :key="template.id" class="template-card" @click="openEdit(template)">
                 <template #content>
                     <div class="template-card__body">
                         <span class="template-card__name">{{ template.name }}</span>
