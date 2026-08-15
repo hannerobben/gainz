@@ -5,6 +5,7 @@ import {SECONDARY_COLOR} from '../colors.ts';
 import {useUsersStore} from '../stores/users.store.ts';
 import {RunsApi} from '../supabase/runs.api.ts';
 import dayjs from 'dayjs';
+import LoadingSpinner from './LoadingSpinner.vue';
 
 const usersStore = useUsersStore();
 
@@ -275,7 +276,9 @@ const scatterChartOptions = {
 </script>
 
 <template>
-    <div v-if="loading" class="state-msg">Loading run data…</div>
+    <div v-if="loading" class="state-center">
+        <LoadingSpinner />
+    </div>
 
     <div v-else-if="runs.length === 0" class="state-msg">
         No runs logged yet. Start tracking to see your progress.
@@ -379,6 +382,13 @@ const scatterChartOptions = {
 </template>
 
 <style scoped>
+.state-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 0;
+}
+
 .state-msg {
     color: var(--p-text-muted-color);
     text-align: center;

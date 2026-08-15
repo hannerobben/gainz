@@ -6,6 +6,7 @@ import {walkDotColor} from '../utils/walk-color.ts';
 import {useUsersStore} from '../stores/users.store.ts';
 import {WalksApi} from '../supabase/walks.api.ts';
 import dayjs from 'dayjs';
+import LoadingSpinner from './LoadingSpinner.vue';
 
 const usersStore = useUsersStore();
 
@@ -214,7 +215,7 @@ const chartOptions = computed(() => ({
             ticks: {
                 color: 'rgba(0,0,0,0.5)',
                 font: {size: 10},
-                callback: (v: number) => (v >= 1000 ? `${v / 1000}k` : `${v}`),
+                callback: (v: number) => (v >= 1000 ? `${parseFloat((v / 1000).toFixed(1))}k` : `${v}`),
             },
             border: {display: false},
         },
@@ -256,7 +257,9 @@ function fmtShort(n: number): string {
 </script>
 
 <template>
-    <div v-if="loading" class="state-msg">Loading step data…</div>
+    <div v-if="loading" class="state-center">
+        <LoadingSpinner />
+    </div>
 
     <template v-else>
         <div class="year-selector">
@@ -358,6 +361,13 @@ function fmtShort(n: number): string {
 </template>
 
 <style scoped>
+.state-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 0;
+}
+
 .state-msg {
     color: var(--p-text-muted-color);
     text-align: center;

@@ -7,6 +7,7 @@ import ExerciseCardStats from './ExerciseCardStats.vue';
 import Popover from 'primevue/popover';
 import dayjs from 'dayjs';
 import {ChevronDown, ChevronUp, ChevronRight, Info} from 'lucide-vue-next';
+import LoadingSpinner from './LoadingSpinner.vue';
 
 const usersStore = useUsersStore();
 
@@ -254,7 +255,9 @@ function chartOptions(isBodyweight: boolean) {
 </script>
 
 <template>
-    <div v-if="loading" class="state-msg">Loading progression data…</div>
+    <div v-if="loading" class="state-center">
+        <LoadingSpinner />
+    </div>
 
     <div v-else-if="progressions.length === 0" class="state-msg">
         No strength workouts logged yet. Start tracking to see your progression.
@@ -400,9 +403,10 @@ function chartOptions(isBodyweight: boolean) {
 </template>
 
 <style scoped>
-.state-msg {
-    color: var(--p-text-muted-color);
-    text-align: center;
+.state-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     padding: 3rem 0;
 }
 
