@@ -14,6 +14,7 @@ import type {Workout} from '../model/workout.contract.ts';
 import type {Walk} from '../model/walk.contract.ts';
 import type {Run} from '../model/run.contract.ts';
 import {walkDotColor} from '../utils/walk-color.ts';
+import LoadingSpinner from '../components/LoadingSpinner.vue';
 
 const selectedFilters = ref(new Set<string>(['strength', 'running']));
 
@@ -122,6 +123,8 @@ function jan1Offset(year: number): number {
     return day === 0 ? 6 : day - 1;
 }
 
+const isInitialLoading = ref(true);
+
 const selectedDate = ref<Date | null>(null);
 const strengthWorkoutDate = ref<Date | null>(null);
 const existingWorkout = ref<Workout | null>(null);
@@ -169,7 +172,8 @@ const scrollTargetIndex = computed(() => {
 onMounted(async () => {
     await nextTick();
     scrollTargetEl.value?.scrollIntoView();
-    fetchWorkoutDates(selectedYear.value);
+    await fetchWorkoutDates(selectedYear.value);
+    isInitialLoading.value = false;
 });
 
 const weeks = computed(() => {
@@ -257,6 +261,10 @@ const weeks = computed(() => {
                 </div>
             </div>
         </div>
+    </div>
+
+    <div v-if="isInitialLoading" class="loading-overlay">
+        <LoadingSpinner />
     </div>
 
     <DayDetailDialog
@@ -461,5 +469,15 @@ const weeks = computed(() => {
         color: #ffffff;
         font-weight: 600;
     }
+}
+
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(245, 245, 245, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
 }
 </style>

@@ -390,13 +390,13 @@ const scatterChartOptions = {
     border-radius: 12px;
     padding: 16px;
     color: #ffffff;
-    margin-bottom: 1rem;
+    margin-bottom: 12px;
 }
 
 .summary-card__stats {
     display: flex;
     gap: 24px;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
     justify-content: space-between;
 }
 

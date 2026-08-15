@@ -411,7 +411,7 @@ function chartOptions(isBodyweight: boolean) {
     border-radius: 12px;
     padding: 16px;
     color: #ffffff;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
 }
 
 .variety-card__label {
@@ -429,7 +429,7 @@ function chartOptions(isBodyweight: boolean) {
     display: flex;
     gap: 24px;
     justify-content: space-between;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
 }
 
 .variety-stat {
@@ -558,7 +558,7 @@ function chartOptions(isBodyweight: boolean) {
     border: 1px solid var(--p-content-border-color);
     border-radius: 12px;
     padding: 16px;
-    margin-bottom: 1rem;
+    margin-bottom: 18px;
 }
 
 .progress-card__label {

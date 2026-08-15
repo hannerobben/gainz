@@ -304,15 +304,15 @@ function fmtShort(n: number): string {
             </div>
 
             <div v-if="selectedYear === currentYear" class="week-card">
-                <div class="week-card__heading">This Week</div>
+                <div class="week-card__heading">Current Week</div>
                 <div class="week-card__stats">
+                    <div class="week-card__stat">
+                      <span class="week-card__label">Daily Avg</span>
+                      <span class="week-card__value">{{ fmt(weekDailyAvg) }}</span>
+                    </div>
                     <div class="week-card__stat">
                         <span class="week-card__label">Total Steps</span>
                         <span class="week-card__value">{{ fmt(currentWeekSteps) }}</span>
-                    </div>
-                    <div class="week-card__stat">
-                        <span class="week-card__label">Daily Avg</span>
-                        <span class="week-card__value">{{ fmt(weekDailyAvg) }}</span>
                     </div>
                 </div>
                 <div class="week-card__progress-label">
@@ -444,7 +444,7 @@ function fmtShort(n: number): string {
     border-radius: 12px;
     padding: 16px;
     color: #ffffff;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
 }
 
 .summary-card__stats {
@@ -511,7 +511,7 @@ function fmtShort(n: number): string {
     border-radius: 12px;
     border: 1px solid var(--p-content-border-color);
     padding: 12px 14px 14px;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
 }
 
 .week-card__heading {

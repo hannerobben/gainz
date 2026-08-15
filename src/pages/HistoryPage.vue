@@ -5,6 +5,7 @@ import {WorkoutsApi} from '../supabase/workouts.api.ts';
 import type {Workout} from '../model/workout.contract.ts';
 import {Calendar} from 'lucide-vue-next';
 import ExerciseCategoryBadge from '../components/ExerciseCategoryBadge.vue';
+import LoadingSpinner from '../components/LoadingSpinner.vue';
 
 const usersStore = useUsersStore();
 const workouts = ref<Workout[]>([]);
@@ -69,7 +70,7 @@ function formatSets(sets: {load: number | null; reps: number | null}[]): {text: 
         </IconField>
 
         <div v-if="loading" class="state-center">
-            <ProgressSpinner />
+            <LoadingSpinner />
         </div>
         <div v-else-if="filteredWorkouts.length === 0" class="state-center">
             <span class="empty-text">{{ searchQuery ? 'No results' : 'No strength workouts yet' }}</span>

@@ -6,6 +6,7 @@ import {useUsersStore} from '../stores/users.store.ts';
 import {WeightsApi} from '../supabase/weights.api.ts';
 import type {Weight} from '../model/weight.contract.ts';
 import LogWeightDialog from '../components/LogWeightDialog.vue';
+import LoadingSpinner from '../components/LoadingSpinner.vue';
 import dayjs from 'dayjs';
 
 const usersStore = useUsersStore();
@@ -91,7 +92,7 @@ function formatDate(date: string): string {
 <template>
     <div class="weight-page">
         <div v-if="loading" class="state-center">
-            <ProgressSpinner />
+            <LoadingSpinner />
         </div>
 
         <template v-else>
