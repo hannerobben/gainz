@@ -13,6 +13,9 @@ const selectedYear = ref(currentYear);
 
 const stepsData = ref<{date: string; stepCount: number}[]>([]);
 const loading = ref(true);
+const viewMode = ref<'daily' | 'weekly' | 'monthly'>('daily');
+const VIEW_MODES = ['daily', 'weekly', 'monthly'] as const;
+const DAILY_GOAL = 8000;
 
 async function load() {
     if (!usersStore.activeUser) return;
@@ -44,6 +47,34 @@ const stepMap = computed(() => new Map(stepsData.value.map(s => [s.date, s.stepC
 
 const dailySteps = computed(() => dateRange.value.map(d => stepMap.value.get(d) ?? 0));
 
+const weeklyAgg = computed(() => {
+    const map = new Map<string, number>();
+    const labels: string[] = [];
+    for (const date of dateRange.value) {
+        const key = dayjs(date).startOf('week').format('YYYY-MM-DD');
+        if (!map.has(key)) {
+            labels.push(date);
+            map.set(key, 0);
+        }
+        map.set(key, map.get(key)! + (stepMap.value.get(date) ?? 0));
+    }
+    return {labels, steps: [...map.values()]};
+});
+
+const monthlyAgg = computed(() => {
+    const map = new Map<string, number>();
+    const labels: string[] = [];
+    for (const date of dateRange.value) {
+        const key = dayjs(date).format('YYYY-MM');
+        if (!map.has(key)) {
+            labels.push(key);
+            map.set(key, 0);
+        }
+        map.set(key, map.get(key)! + (stepMap.value.get(date) ?? 0));
+    }
+    return {labels, steps: [...map.values()]};
+});
+
 const daysLogged = computed(() => stepsData.value.filter(s => s.stepCount > 0).length);
 
 const avgSteps = computed(() => {
@@ -56,11 +87,11 @@ const bestDay = computed(() =>
     stepsData.value.length === 0 ? null : Math.max(...stepsData.value.map(s => s.stepCount))
 );
 
-const goalDays = computed(() => stepsData.value.filter(s => s.stepCount >= 10000).length);
+const goalDays = computed(() => stepsData.value.filter(s => s.stepCount >= DAILY_GOAL).length);
 
 const bestStreak = computed(() => {
     const sorted = stepsData.value
-        .filter(s => s.stepCount >= 10000)
+        .filter(s => s.stepCount >= DAILY_GOAL)
         .map(s => s.date)
         .sort();
     if (sorted.length === 0) return 0;
@@ -76,29 +107,62 @@ const bestStreak = computed(() => {
     return best;
 });
 
-const chartData = computed(() => ({
-    labels: dateRange.value,
-    datasets: [
+const currentWeekSteps = computed(() => {
+    if (selectedYear.value !== currentYear) return 0;
+    const start = dayjs().startOf('week');
+    return dateRange.value
+        .filter(d => !dayjs(d).isBefore(start))
+        .reduce((sum, d) => sum + (stepMap.value.get(d) ?? 0), 0);
+});
+
+const weekDailyAvg = computed(() => {
+    const daysElapsed = Math.max(1, dayjs().diff(dayjs().startOf('week'), 'day') + 1);
+    return Math.round(currentWeekSteps.value / daysElapsed);
+});
+
+const weekProgress = computed(() => Math.min((currentWeekSteps.value / (DAILY_GOAL * 7)) * 100, 100));
+
+function buildDatasets(steps: number[], goals: number[]) {
+    return [
         {
             type: 'bar' as const,
-            data: dailySteps.value,
-            backgroundColor: dailySteps.value.map(s => s >= 10000 ? SECONDARY_COLOR : 'rgba(193, 122, 48, 0.5)'),
+            data: steps,
+            backgroundColor: steps.map((s, i) => s >= goals[i] ? SECONDARY_COLOR : 'rgba(193, 122, 48, 0.5)'),
             borderRadius: 2,
             borderSkipped: false,
         },
         {
             type: 'line' as const,
-            data: Array(dateRange.value.length).fill(10000),
+            data: goals,
             borderColor: 'rgba(193, 122, 48, 0.55)',
             borderWidth: 1.5,
             borderDash: [6, 3],
             pointRadius: 0,
             fill: false,
         },
-    ],
-}));
+    ];
+}
 
-const chartHeight = computed(() => Math.max(450, dateRange.value.length * 8));
+const chartData = computed(() => {
+    if (viewMode.value === 'weekly') {
+        const {labels, steps} = weeklyAgg.value;
+        return {labels, datasets: buildDatasets(steps, Array(labels.length).fill(DAILY_GOAL * 7))};
+    }
+    if (viewMode.value === 'monthly') {
+        const {labels, steps} = monthlyAgg.value;
+        return {labels, datasets: buildDatasets(steps, labels.map(l => dayjs(l).daysInMonth() * DAILY_GOAL))};
+    }
+    return {
+        labels: dateRange.value,
+        datasets: buildDatasets(dailySteps.value, Array(dateRange.value.length).fill(DAILY_GOAL)),
+    };
+});
+
+const chartHeight = computed(() => {
+    if (viewMode.value === 'weekly') return Math.max(250, weeklyAgg.value.labels.length * 14);
+    if (viewMode.value === 'monthly') return Math.max(200, monthlyAgg.value.labels.length * 28);
+    return Math.max(450, dateRange.value.length * 8);
+});
 
 const chartOptions = computed(() => ({
     responsive: true,
@@ -109,8 +173,12 @@ const chartOptions = computed(() => ({
         tooltip: {
             filter: (item: {datasetIndex: number}) => item.datasetIndex === 0,
             callbacks: {
-                title: (items: {label: string}[]) =>
-                    dayjs(items[0].label).format('MMM D, YYYY'),
+                title: (items: {label: string}[]) => {
+                    const lbl = items[0].label;
+                    if (viewMode.value === 'weekly') return `Week of ${dayjs(lbl).format('MMM D, YYYY')}`;
+                    if (viewMode.value === 'monthly') return dayjs(lbl).format('MMMM YYYY');
+                    return dayjs(lbl).format('MMM D, YYYY');
+                },
                 label: (ctx: {parsed: {x: number}}) =>
                     ` ${ctx.parsed.x.toLocaleString()} steps`,
             },
@@ -118,7 +186,11 @@ const chartOptions = computed(() => ({
     },
     scales: {
         x: {
-            max: bestDay.value ?? undefined,
+            max: viewMode.value === 'weekly'
+                ? (weeklyAgg.value.steps.length > 0 ? Math.max(...weeklyAgg.value.steps) : undefined)
+                : viewMode.value === 'monthly'
+                ? (monthlyAgg.value.steps.length > 0 ? Math.max(...monthlyAgg.value.steps) : undefined)
+                : (bestDay.value ?? undefined),
             grid: {color: 'rgba(0,0,0,0.06)'},
             ticks: {
                 color: 'rgba(0,0,0,0.5)',
@@ -135,6 +207,17 @@ const chartOptions = computed(() => ({
                 color: 'rgba(0,0,0,0.35)',
                 font: {size: 9},
                 callback: (value: number) => {
+                    if (viewMode.value === 'weekly') {
+                        const date = weeklyAgg.value.labels[value];
+                        if (!date) return '';
+                        if (value === 0) return dayjs(date).format('MMM');
+                        const prev = weeklyAgg.value.labels[value - 1];
+                        return dayjs(date).month() !== dayjs(prev).month() ? dayjs(date).format('MMM') : '';
+                    }
+                    if (viewMode.value === 'monthly') {
+                        const label = monthlyAgg.value.labels[value];
+                        return label ? dayjs(label).format('MMM') : '';
+                    }
                     const date = dateRange.value[value];
                     if (!date) return '';
                     return dayjs(date).date() === 1 ? dayjs(date).format('MMM') : '';
@@ -184,21 +267,53 @@ function fmt(n: number): string {
                         <span class="summary-card__value">{{ bestDay !== null ? fmt(bestDay) : '—' }}</span>
                     </div>
                     <div class="summary-card__stat">
-                        <span class="summary-card__label">Goal Days 10k</span>
+                        <span class="summary-card__label">Goal Days 8k</span>
                         <span class="summary-card__value">
                             {{ goalDays }}
                             <span class="summary-card__unit">/ {{ daysLogged }}</span>
                         </span>
                     </div>
                     <div class="summary-card__stat">
-                        <span class="summary-card__label">Best Streak 10k</span>
+                        <span class="summary-card__label">Best Streak 8k</span>
                         <span class="summary-card__value">{{ bestStreak }}<span class="summary-card__unit"> days</span></span>
                     </div>
                 </div>
             </div>
 
+            <div v-if="selectedYear === currentYear" class="week-card">
+                <div class="week-card__heading">This Week</div>
+                <div class="week-card__stats">
+                    <div class="week-card__stat">
+                        <span class="week-card__label">Total Steps</span>
+                        <span class="week-card__value">{{ fmt(currentWeekSteps) }}</span>
+                    </div>
+                    <div class="week-card__stat">
+                        <span class="week-card__label">Daily Avg</span>
+                        <span class="week-card__value">{{ fmt(weekDailyAvg) }}</span>
+                    </div>
+                </div>
+                <div class="week-card__progress-label">
+                    <span>Progress to {{ fmt(DAILY_GOAL * 7) }}</span>
+                    <span>{{ fmt(currentWeekSteps) }} / {{ fmt(DAILY_GOAL * 7) }}</span>
+                </div>
+                <div class="week-card__progress-track">
+                    <div class="week-card__progress-fill" :style="{width: weekProgress + '%'}"></div>
+                </div>
+            </div>
+
+
+
             <div class="chart-card">
-                <div class="chart-card__heading">Daily steps</div>
+              <div class="view-toggle">
+                <button
+                    v-for="mode in VIEW_MODES"
+                    :key="mode"
+                    class="view-btn"
+                    :class="{'view-btn--active': viewMode === mode}"
+                    @click="viewMode = mode"
+                >{{ mode }}</button>
+              </div>
+                <div class="chart-card__heading">{{ viewMode }} steps</div>
                 <div class="chart-card__chart" :style="{height: chartHeight + 'px'}">
                     <Chart type="bar" :data="chartData" :options="chartOptions" />
                 </div>
@@ -219,7 +334,7 @@ function fmt(n: number): string {
     align-items: center;
     justify-content: center;
     gap: 16px;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 }
 
 .year-btn {
@@ -255,12 +370,46 @@ function fmt(n: number): string {
     text-align: center;
 }
 
+.view-toggle {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 1rem;
+}
+
+.view-btn {
+    background: none;
+    border: 1px solid var(--p-content-border-color);
+    cursor: pointer;
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--p-text-muted-color);
+    text-transform: capitalize;
+    transition: all 0.15s;
+}
+
+.view-btn:hover {
+    background: #e8e9f2;
+}
+
+.view-btn--active {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: #ffffff;
+}
+
+.view-btn--active:hover {
+    background: var(--primary-color);
+}
+
 .summary-card {
     background: var(--primary-color);
     border-radius: 12px;
     padding: 16px;
     color: #ffffff;
-    margin-bottom: 1rem;
+    margin-bottom: 8px;
 }
 
 .summary-card__stats {
@@ -310,6 +459,7 @@ function fmt(n: number): string {
     text-transform: uppercase;
     color: var(--p-text-muted-color);
     margin-bottom: 10px;
+  text-align: center;
 }
 
 .chart-card__chart {
@@ -319,5 +469,73 @@ function fmt(n: number): string {
 .chart-card__chart :deep(div),
 .chart-card__chart :deep(canvas) {
     height: 100% !important;
+}
+
+.week-card {
+    background: var(--p-card-background);
+    border-radius: 12px;
+    border: 1px solid var(--p-content-border-color);
+    padding: 12px 14px 14px;
+    margin-bottom: 8px;
+}
+
+.week-card__heading {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--p-text-muted-color);
+    margin-bottom: 10px;
+}
+
+.week-card__stats {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 14px;
+}
+
+.week-card__stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+   flex: 1;
+  padding: 4px 8px;
+  background: #f6f6f6;
+  border-radius: 6px;
+}
+
+.week-card__label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--p-text-muted-color);
+}
+
+.week-card__value {
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.week-card__progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    color: var(--p-text-muted-color);
+    margin-bottom: 6px;
+}
+
+.week-card__progress-track {
+    height: 8px;
+    background: rgba(0, 0, 0, 0.08);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.week-card__progress-fill {
+    height: 100%;
+    background: var(--primary-color);
+    border-radius: 4px;
+    transition: width 0.4s ease;
 }
 </style>

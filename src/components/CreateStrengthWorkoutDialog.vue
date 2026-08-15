@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {computed, nextTick, ref, watch} from 'vue';
 import {storeToRefs} from 'pinia';
-import {X, Plus} from 'lucide-vue-next';
+import {X, Plus, ChevronUp, ChevronDown} from 'lucide-vue-next';
 import {useToast} from 'primevue/usetoast';
 import {useExercisesStore} from '../stores/exercises.store.ts';
 import {useUsersStore} from '../stores/users.store.ts';
@@ -46,12 +46,63 @@ const deleting = ref(false);
 const showDeleteConfirm = ref(false);
 const filteredExercises = ref<Exercise[]>([]);
 
-watch(visible, isVisible => {
-    if (isVisible && props.existingWorkout) {
+const collapsedState = ref<Record<string, boolean>>({});
+const manuallyExpanded = ref<Record<string, boolean>>({});
+
+function isFilled(entry: WorkoutExerciseEntry): boolean {
+    return entry.sets.length >= 3 && entry.sets.every(s => s.load !== null && s.reps !== null);
+}
+
+function toggleCollapsed(exerciseId: string) {
+    const isCollapsed = collapsedState.value[exerciseId] ?? false;
+    if (isCollapsed) {
+        collapsedState.value = {...collapsedState.value, [exerciseId]: false};
+        manuallyExpanded.value = {...manuallyExpanded.value, [exerciseId]: true};
+    } else {
+        collapsedState.value = {...collapsedState.value, [exerciseId]: true};
+        manuallyExpanded.value = {...manuallyExpanded.value, [exerciseId]: false};
+    }
+}
+
+watch(entries, newEntries => {
+    const updates: Record<string, boolean> = {};
+    for (const entry of newEntries) {
+        const id = entry.exercise.id;
+        if (isFilled(entry) && !manuallyExpanded.value[id] && !collapsedState.value[id]) {
+            updates[id] = true;
+        }
+    }
+    if (Object.keys(updates).length > 0) {
+        collapsedState.value = {...collapsedState.value, ...updates};
+    }
+}, {deep: true});
+
+watch(visible, async isVisible => {
+    if (!isVisible) {
+        collapsedState.value = {};
+        manuallyExpanded.value = {};
+        return;
+    }
+    if (props.existingWorkout) {
         entries.value = props.existingWorkout.entries.map(e => ({
             exercise: e.exercise,
             sets: e.sets.map(s => ({...s}))
         }));
+        const initialCollapsed: Record<string, boolean> = {};
+        for (const entry of entries.value) {
+            if (isFilled(entry)) initialCollapsed[entry.exercise.id] = true;
+        }
+        collapsedState.value = initialCollapsed;
+        if (usersStore.activeUser) {
+            for (const entry of props.existingWorkout.entries) {
+                const lastSets = await WorkoutsApi.getLastSetsForExercise(
+                    usersStore.activeUser.id,
+                    entry.exercise.id,
+                    props.existingWorkout.id
+                );
+                if (lastSets.length > 0) lastSetsMap.value.set(entry.exercise.id, lastSets);
+            }
+        }
     }
 });
 
@@ -80,6 +131,12 @@ async function onExerciseSelect(exercise: Exercise) {
 
 function removeEntry(index: number) {
     entries.value.splice(index, 1);
+}
+
+function moveEntry(index: number, direction: -1 | 1) {
+    const target = index + direction;
+    if (target < 0 || target >= entries.value.length) return;
+    [entries.value[index], entries.value[target]] = [entries.value[target], entries.value[index]];
 }
 
 const searchBarEl = ref<{ $el: HTMLElement } | null>(null);
@@ -157,6 +214,8 @@ async function applyTemplate() {
 function cancel() {
     entries.value = [];
     lastSetsMap.value.clear();
+    collapsedState.value = {};
+    manuallyExpanded.value = {};
     searchQuery.value = '';
     selectedTemplate.value = null;
     emit('close');
@@ -180,52 +239,66 @@ function cancel() {
 
             <div class="entries-list">
                 <div v-for="(entry, ei) in entries" :key="entry.exercise.id" class="exercise-card">
-                    <div class="exercise-card-header">
-                        <span class="exercise-card-name">{{ entry.exercise.name }}</span>
-                        <button class="remove-btn" @click="removeEntry(ei)">
-                            <X :size="14" />
-                        </button>
-                    </div>
-
-                    <div class="sets-table">
-                        <div class="sets-header">
-                            <span class="col-set">#</span>
-                            <span class="col-load">Load (kg)</span>
-                            <span class="col-reps">Reps</span>
-                            <span class="col-action" />
+                    <div class="exercise-card-header" @click="toggleCollapsed(entry.exercise.id)">
+                        <div class="exercise-card-title">
+                            <ChevronDown :size="16" class="collapse-icon" :class="{collapsed: collapsedState[entry.exercise.id]}" />
+                            <span class="exercise-card-name">{{ entry.exercise.name }}</span>
+                            <span v-if="collapsedState[entry.exercise.id]" class="sets-summary">{{ entry.sets.length }} sets</span>
                         </div>
-                        <div v-for="(set, si) in entry.sets" :key="si" class="set-row">
-                            <span class="col-set set-number">{{ si + 1 }}</span>
-                            <InputNumber
-                                :ref="si === 0 ? (el: any) => { if (el) firstLoadInputs[ei] = el } : undefined"
-                                v-model="(set as WorkoutSet).load"
-                                class="col-load"
-                                :min="0"
-                                :maxFractionDigits="2"
-                                :placeholder="lastSetsMap.get(entry.exercise.id)?.[si]?.load?.toString() ?? '—'"
-                                fluid
-                            />
-                            <InputNumber
-                                v-model="(set as WorkoutSet).reps"
-                                class="col-reps"
-                                :min="0"
-                                :placeholder="lastSetsMap.get(entry.exercise.id)?.[si]?.reps?.toString() ?? '—'"
-                                fluid
-                            />
-                            <button
-                                class="col-action remove-set-btn"
-                                :disabled="entry.sets.length === 1"
-                                @click="removeSet(entry, si)"
-                            >
-                                <X :size="12" />
+                        <div class="exercise-card-actions" @click.stop>
+                            <button class="header-btn" :disabled="ei === 0" @click="moveEntry(ei, -1)">
+                                <ChevronUp :size="18" />
+                            </button>
+                            <button class="header-btn" :disabled="ei === entries.length - 1" @click="moveEntry(ei, 1)">
+                                <ChevronDown :size="18" />
+                            </button>
+                            <button class="header-btn" @click="removeEntry(ei)">
+                                <X :size="18" />
                             </button>
                         </div>
                     </div>
 
-                    <button class="add-set-btn" @click="addSet(entry)">
-                        <Plus :size="13" />
-                        Add set
-                    </button>
+                    <template v-if="!collapsedState[entry.exercise.id]">
+                        <div class="sets-table">
+                            <div class="sets-header">
+                                <span class="col-set">#</span>
+                                <span class="col-load">Load (kg)</span>
+                                <span class="col-reps">Reps</span>
+                                <span class="col-action" />
+                            </div>
+                            <div v-for="(set, si) in entry.sets" :key="si" class="set-row">
+                                <span class="col-set set-number">{{ si + 1 }}</span>
+                                <InputNumber
+                                    :ref="si === 0 ? (el: any) => { if (el) firstLoadInputs[ei] = el } : undefined"
+                                    v-model="(set as WorkoutSet).load"
+                                    class="col-load"
+                                    :min="0"
+                                    :maxFractionDigits="2"
+                                    :placeholder="lastSetsMap.get(entry.exercise.id)?.[si]?.load?.toString() ?? '—'"
+                                    fluid
+                                />
+                                <InputNumber
+                                    v-model="(set as WorkoutSet).reps"
+                                    class="col-reps"
+                                    :min="0"
+                                    :placeholder="lastSetsMap.get(entry.exercise.id)?.[si]?.reps?.toString() ?? '—'"
+                                    fluid
+                                />
+                                <button
+                                    class="col-action remove-set-btn"
+                                    :disabled="entry.sets.length === 1"
+                                    @click="removeSet(entry, si)"
+                                >
+                                    <X :size="12" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <button class="add-set-btn" @click="addSet(entry)">
+                            <Plus :size="13" />
+                            Add set
+                        </button>
+                    </template>
                 </div>
             </div>
 
@@ -338,6 +411,7 @@ function cancel() {
     justify-content: space-between;
     background: var(--primary-color);
     padding: 10px 12px;
+    cursor: pointer;
 }
 
 .exercise-card-name {
@@ -346,7 +420,39 @@ function cancel() {
     color: #ffffff;
 }
 
-.remove-btn {
+.exercise-card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+}
+
+.collapse-icon {
+    flex-shrink: 0;
+    color: rgba(255, 255, 255, 0.8);
+    transition: transform 0.2s ease;
+
+    &.collapsed {
+        transform: rotate(-90deg);
+    }
+}
+
+.sets-summary {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.55);
+    font-weight: 400;
+    white-space: nowrap;
+}
+
+.exercise-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.header-btn {
     background: none;
     border: none;
     cursor: pointer;
@@ -357,8 +463,13 @@ function cancel() {
     border-radius: 4px;
     transition: color 0.15s;
 
-    &:hover {
+    &:hover:not(:disabled) {
         color: #ffffff;
+    }
+
+    &:disabled {
+        opacity: 0.25;
+        cursor: default;
     }
 }
 

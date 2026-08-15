@@ -5,7 +5,7 @@ import {SECONDARY_COLOR} from '../colors.ts';
 import {WorkoutApi, type ExerciseProgression} from '../supabase/workout.api.ts';
 import ExerciseCardStats from './ExerciseCardStats.vue';
 import dayjs from 'dayjs';
-import {ChevronDown, ChevronUp, ChevronRight} from 'lucide-vue-next';
+import {ChevronDown, ChevronUp, ChevronRight, Info} from 'lucide-vue-next';
 
 const usersStore = useUsersStore();
 
@@ -124,6 +124,58 @@ async function load() {
 onMounted(load);
 watch(() => usersStore.activeUser?.id, load);
 
+const strengthTrend = computed(() => {
+    const changes: number[] = [];
+    for (const p of progressions.value) {
+        if (p.isBodyweight || p.dataPoints.length < 2) continue;
+        const first = p.dataPoints[0].e1rm;
+        const last = p.dataPoints[p.dataPoints.length - 1].e1rm;
+        if (first > 0) changes.push((last - first) / first * 100);
+    }
+    if (changes.length === 0) return null;
+    return changes.reduce((a, b) => a + b, 0) / changes.length;
+});
+
+const atPrCount = computed(() => {
+    let count = 0;
+    for (const p of progressions.value) {
+        if (p.dataPoints.length === 0) continue;
+        const max = Math.max(...p.dataPoints.map(dp => dp.e1rm));
+        if (p.dataPoints[p.dataPoints.length - 1].e1rm >= max) count++;
+    }
+    return count;
+});
+
+const volumeTrend = computed(() => {
+    const volumeByDate = new Map<string, number>();
+    for (const p of progressions.value) {
+        for (const dp of p.dataPoints) {
+            const vol = dp.sets.reduce((sum, s) => sum + (s.load ?? 0) * (s.reps ?? 0), 0);
+            volumeByDate.set(dp.date, (volumeByDate.get(dp.date) ?? 0) + vol);
+        }
+    }
+    const sorted = [...volumeByDate.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+    if (sorted.length < 5) return null;
+    const recent = sorted.slice(-4);
+    const prev = sorted.slice(-8, -4);
+    if (prev.length === 0) return null;
+    const recentAvg = recent.reduce((s, [, v]) => s + v, 0) / recent.length;
+    const prevAvg = prev.reduce((s, [, v]) => s + v, 0) / prev.length;
+    if (prevAvg === 0) return null;
+    return (recentAvg - prevAvg) / prevAvg * 100;
+});
+
+function formatTrend(val: number | null): string {
+    if (val === null) return '—';
+    const sign = val >= 0 ? '+' : '';
+    return `${sign}${val.toFixed(1)}%`;
+}
+
+function trendClass(val: number | null): string {
+    if (val === null || val === 0) return '';
+    return val > 0 ? 'trend-up' : 'trend-down';
+}
+
 function chartData(progression: ExerciseProgression) {
     return {
         labels: progression.dataPoints.map(p => p.date),
@@ -190,6 +242,33 @@ function chartOptions(isBodyweight: boolean) {
           <div class="variety-card__label">Exercise Variety</div>
             <div class="variety-card__chart">
                 <Chart type="doughnut" :data="varietyChartData" :options="varietyChartOptions" :height="120"/>
+            </div>
+        </div>
+
+        <div class="progress-card">
+            <div class="progress-card__label">Progress Snapshot</div>
+            <div class="progress-stats">
+                <div class="progress-stat-row">
+                    <span class="progress-stat-label">
+                        Strength trend
+                        <Info :size="14" class="metric-info" v-tooltip.top="'Average % change in estimated 1RM from your first to your latest session, across all weighted exercises with at least 2 sessions.'" />
+                    </span>
+                    <span class="progress-stat-value" :class="trendClass(strengthTrend)">{{ formatTrend(strengthTrend) }}</span>
+                </div>
+                <div class="progress-stat-row">
+                    <span class="progress-stat-label">
+                        At PR
+                        <Info :size="14" class="metric-info" v-tooltip.top="'Number of exercises where your most recent session equals your all-time best estimated 1RM.'" />
+                    </span>
+                    <span class="progress-stat-value">{{ atPrCount }} / {{ progressions.length }}</span>
+                </div>
+                <div class="progress-stat-row">
+                    <span class="progress-stat-label">
+                        Volume trend
+                        <Info :size="14" class="metric-info" v-tooltip.top="'Compares average total training volume (load × reps across all exercises) of your last 4 sessions vs the 4 before that.'" />
+                    </span>
+                    <span class="progress-stat-value" :class="trendClass(volumeTrend)">{{ formatTrend(volumeTrend) }}</span>
+                </div>
             </div>
         </div>
 
@@ -268,7 +347,7 @@ function chartOptions(isBodyweight: boolean) {
     border-radius: 12px;
     padding: 16px;
     color: #ffffff;
-    margin-bottom: 1rem;
+    margin-bottom: 8px;
 }
 
 .variety-card__label {
@@ -408,6 +487,68 @@ function chartOptions(isBodyweight: boolean) {
 
 .history-row + .history-row {
     border-top: 1px solid var(--p-content-border-color);
+}
+
+.progress-card {
+    background: var(--p-card-background);
+    border: 1px solid var(--p-content-border-color);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 1rem;
+}
+
+.progress-card__label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--p-text-muted-color);
+    margin-bottom: 12px;
+}
+
+.progress-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.progress-stat-row + .progress-stat-row {
+    border-top: 1px solid var(--p-content-border-color);
+    margin-top: 8px;
+    padding-top: 8px;
+}
+
+.progress-stat-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.progress-stat-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: var(--p-text-color);
+}
+
+.progress-stat-value {
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.trend-up {
+    color: #6fcf97;
+}
+
+.trend-down {
+    color: #eb5757;
+}
+
+.metric-info {
+    color: var(--p-text-muted-color);
+    cursor: default;
+    opacity: 0.6;
 }
 
 .exercises-header {

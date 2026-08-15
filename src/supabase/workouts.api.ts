@@ -18,10 +18,11 @@ export class WorkoutsApi {
 
         if (workoutError || !workout) throw workoutError;
 
-        const sets = entries.flatMap((entry, _ei) =>
+        const sets = entries.flatMap((entry, ei) =>
             entry.sets.map((set, si) => ({
                 workout_id: workout.id,
                 exercise_id: entry.exercise.id,
+                exercise_index: ei,
                 set_number: si + 1,
                 load: set.load,
                 reps: set.reps
@@ -42,7 +43,7 @@ export class WorkoutsApi {
             .select(`
                 id,
                 workout_exercise_sets (
-                    set_number, load, reps,
+                    exercise_index, set_number, load, reps,
                     exercise:strength_exercises (
                         id, name, description, image_url, category, movement_pattern, muscle_groups, equipment
                     )
@@ -55,8 +56,10 @@ export class WorkoutsApi {
 
         if (error || !data) return null;
 
-        type RawSet = {set_number: number; load: number | null; reps: number | null; exercise: Exercise};
-        const raw = (data.workout_exercise_sets as unknown as RawSet[]).sort((a, b) => a.set_number - b.set_number);
+        type RawSet = {exercise_index: number; set_number: number; load: number | null; reps: number | null; exercise: Exercise};
+        const raw = (data.workout_exercise_sets as unknown as RawSet[]).sort(
+            (a, b) => a.exercise_index - b.exercise_index || a.set_number - b.set_number
+        );
 
         const exerciseMap = new Map<string, WorkoutExerciseEntry>();
         for (const s of raw) {
@@ -76,7 +79,7 @@ export class WorkoutsApi {
                 id,
                 date,
                 workout_exercise_sets (
-                    set_number, load, reps,
+                    exercise_index, set_number, load, reps,
                     exercise:strength_exercises (
                         id, name, description, image_url, category, movement_pattern, muscle_groups, equipment
                     )
@@ -88,11 +91,11 @@ export class WorkoutsApi {
 
         if (error || !data) return [];
 
-        type RawSet = {set_number: number; load: number | null; reps: number | null; exercise: Exercise};
+        type RawSet = {exercise_index: number; set_number: number; load: number | null; reps: number | null; exercise: Exercise};
 
         return data.map(workout => {
             const raw = (workout.workout_exercise_sets as unknown as RawSet[]).sort(
-                (a, b) => a.set_number - b.set_number
+                (a, b) => a.exercise_index - b.exercise_index || a.set_number - b.set_number
             );
             const exerciseMap = new Map<string, WorkoutExerciseEntry>();
             for (const s of raw) {
@@ -113,10 +116,11 @@ export class WorkoutsApi {
 
         if (deleteError) throw deleteError;
 
-        const sets = entries.flatMap((entry, _ei) =>
+        const sets = entries.flatMap((entry, ei) =>
             entry.sets.map((set, si) => ({
                 workout_id: workoutId,
                 exercise_id: entry.exercise.id,
+                exercise_index: ei,
                 set_number: si + 1,
                 load: set.load,
                 reps: set.reps
@@ -134,8 +138,8 @@ export class WorkoutsApi {
         if (error) throw error;
     }
 
-    public static async getLastSetsForExercise(userId: string, exerciseId: string): Promise<WorkoutSet[]> {
-        const {data, error} = await supabase
+    public static async getLastSetsForExercise(userId: string, exerciseId: string, excludeWorkoutId?: string): Promise<WorkoutSet[]> {
+        let query = supabase
             .from('workout_exercise_sets')
             .select('load, reps, set_number, workout:workouts!inner(date, user_id)')
             .eq('workout.user_id', userId)
@@ -143,6 +147,10 @@ export class WorkoutsApi {
             .eq('workout.type', 'strength')
             .order('workout(date)', {ascending: false})
             .order('set_number', {ascending: true});
+
+        if (excludeWorkoutId) query = query.neq('workout_id', excludeWorkoutId);
+
+        const {data, error} = await query;
 
         if (error || !data || data.length === 0) return [];
 
