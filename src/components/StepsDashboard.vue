@@ -2,6 +2,7 @@
 import {ref, computed, onMounted, watch} from 'vue';
 import {ChevronLeft, ChevronRight} from 'lucide-vue-next';
 import {SECONDARY_COLOR} from '../colors.ts';
+import {walkDotColor} from '../utils/walk-color.ts';
 import {useUsersStore} from '../stores/users.store.ts';
 import {WalksApi} from '../supabase/walks.api.ts';
 import dayjs from 'dayjs';
@@ -16,6 +17,7 @@ const loading = ref(true);
 const viewMode = ref<'daily' | 'weekly' | 'monthly'>('daily');
 const VIEW_MODES = ['daily', 'weekly', 'monthly'] as const;
 const DAILY_GOAL = 8000;
+const WEEK_DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] as const;
 
 async function load() {
     if (!usersStore.activeUser) return;
@@ -121,6 +123,23 @@ const weekDailyAvg = computed(() => {
 });
 
 const weekProgress = computed(() => Math.min((currentWeekSteps.value / (DAILY_GOAL * 7)) * 100, 100));
+
+const currentWeekDays = computed(() => {
+    const today = dayjs();
+    const dow = today.day();
+    const monday = today.subtract(dow === 0 ? 6 : dow - 1, 'day');
+    return Array.from({length: 7}, (_, i) => {
+        const day = monday.add(i, 'day');
+        const dateStr = day.format('YYYY-MM-DD');
+        const isFuture = day.isAfter(today, 'day');
+        return {
+            label: WEEK_DAY_LABELS[i],
+            steps: isFuture ? null : (stepMap.value.get(dateStr) ?? 0),
+            isFuture,
+            isToday: day.isSame(today, 'day'),
+        };
+    });
+});
 
 function buildDatasets(steps: number[], goals: number[]) {
     return [
@@ -230,6 +249,10 @@ const chartOptions = computed(() => ({
 function fmt(n: number): string {
     return n.toLocaleString();
 }
+
+function fmtShort(n: number): string {
+    return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : `${n}`;
+}
 </script>
 
 <template>
@@ -298,6 +321,18 @@ function fmt(n: number): string {
                 </div>
                 <div class="week-card__progress-track">
                     <div class="week-card__progress-fill" :style="{width: weekProgress + '%'}"></div>
+                </div>
+                <div class="week-days">
+                    <div
+                        v-for="(day, i) in currentWeekDays"
+                        :key="i"
+                        class="week-day"
+                        :class="{'week-day--today': day.isToday, 'week-day--future': day.isFuture, 'week-day--active': day.steps !== null && day.steps > 0}"
+                        :style="day.steps ? {backgroundColor: walkDotColor(day.steps), borderColor: walkDotColor(day.steps)} : undefined"
+                    >
+                        <span class="week-day__label">{{ day.label }}</span>
+                        <span class="week-day__steps">{{ day.isFuture ? '-' : fmtShort(day.steps ?? 0) }}</span>
+                    </div>
                 </div>
             </div>
 
@@ -537,5 +572,51 @@ function fmt(n: number): string {
     background: var(--primary-color);
     border-radius: 4px;
     transition: width 0.4s ease;
+}
+
+.week-days {
+    display: flex;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.week-day {
+    flex: 1;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 1px solid #d5d5d5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+}
+
+.week-day--today {
+    border-color: var(--primary-color) !important;
+    border-width: 2px;
+}
+
+.week-day--future {
+    border-color: #ebebeb;
+}
+
+.week-day__label {
+    font-size: 0.5rem;
+    font-weight: 700;
+    color: #bebebe;
+    line-height: 1;
+}
+
+.week-day__steps {
+    font-size: 0.45rem;
+    color: #bebebe;
+    line-height: 1;
+}
+
+.week-day--active .week-day__label,
+.week-day--active .week-day__steps {
+    color: #ffffff;
 }
 </style>

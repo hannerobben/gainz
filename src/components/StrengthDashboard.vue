@@ -4,6 +4,7 @@ import {useUsersStore} from '../stores/users.store.ts';
 import {SECONDARY_COLOR} from '../colors.ts';
 import {WorkoutApi, type ExerciseProgression} from '../supabase/workout.api.ts';
 import ExerciseCardStats from './ExerciseCardStats.vue';
+import Popover from 'primevue/popover';
 import dayjs from 'dayjs';
 import {ChevronDown, ChevronUp, ChevronRight, Info} from 'lucide-vue-next';
 
@@ -128,9 +129,13 @@ const strengthTrend = computed(() => {
     const changes: number[] = [];
     for (const p of progressions.value) {
         if (p.isBodyweight || p.dataPoints.length < 2) continue;
-        const first = p.dataPoints[0].e1rm;
-        const last = p.dataPoints[p.dataPoints.length - 1].e1rm;
-        if (first > 0) changes.push((last - first) / first * 100);
+        const recent = p.dataPoints.slice(-4);
+        const prev = p.dataPoints.slice(-8, -4);
+        if (prev.length === 0) continue;
+        const recentAvg = recent.reduce((s, dp) => s + dp.e1rm, 0) / recent.length;
+        const prevAvg = prev.reduce((s, dp) => s + dp.e1rm, 0) / prev.length;
+        if (prevAvg === 0) continue;
+        changes.push((recentAvg - prevAvg) / prevAvg * 100);
     }
     if (changes.length === 0) return null;
     return changes.reduce((a, b) => a + b, 0) / changes.length;
@@ -163,6 +168,39 @@ const volumeTrend = computed(() => {
     const prevAvg = prev.reduce((s, [, v]) => s + v, 0) / prev.length;
     if (prevAvg === 0) return null;
     return (recentAvg - prevAvg) / prevAvg * 100;
+});
+
+const infoPopover = ref();
+const infoText = ref('');
+
+function showInfo(event: MouseEvent, text: string) {
+    infoText.value = text;
+    infoPopover.value.toggle(event);
+}
+
+const recentMomentum = computed(() => {
+    const cutoff = dayjs().subtract(30, 'day').format('YYYY-MM-DD');
+    let count = 0;
+    for (const p of progressions.value) {
+        const historical = p.dataPoints.filter(dp => dp.date < cutoff);
+        const recent = p.dataPoints.filter(dp => dp.date >= cutoff);
+        if (historical.length === 0 || recent.length === 0) continue;
+        const historicalMax = Math.max(...historical.map(dp => dp.e1rm));
+        const recentMax = Math.max(...recent.map(dp => dp.e1rm));
+        if (recentMax > historicalMax) count++;
+    }
+    return count;
+});
+
+const trendingUp = computed(() => {
+    let count = 0;
+    for (const p of progressions.value) {
+        if (p.dataPoints.length < 2) continue;
+        const last = p.dataPoints[p.dataPoints.length - 1];
+        const prev = p.dataPoints[p.dataPoints.length - 2];
+        if (last.e1rm > prev.e1rm) count++;
+    }
+    return count;
 });
 
 function formatTrend(val: number | null): string {
@@ -245,29 +283,55 @@ function chartOptions(isBodyweight: boolean) {
             </div>
         </div>
 
+        <Popover ref="infoPopover">
+            <p class="info-popover-text">{{ infoText }}</p>
+        </Popover>
+
         <div class="progress-card">
-            <div class="progress-card__label">Progress Snapshot</div>
-            <div class="progress-stats">
-                <div class="progress-stat-row">
-                    <span class="progress-stat-label">
+            <div class="trend-group">
+                <div class="trend-item">
+                    <span class="trend-item__label">
                         Strength trend
-                        <Info :size="14" class="metric-info" v-tooltip.top="'Average % change in estimated 1RM from your first to your latest session, across all weighted exercises with at least 2 sessions.'" />
+                        <button type="button" class="metric-info" @click="showInfo($event, 'Average % change in estimated 1RM between your last 4 sessions and the 4 before that, across all weighted exercises with enough history.')"><Info :size="13" /></button>
                     </span>
-                    <span class="progress-stat-value" :class="trendClass(strengthTrend)">{{ formatTrend(strengthTrend) }}</span>
+                    <span class="trend-item__value" :class="trendClass(strengthTrend)">{{ formatTrend(strengthTrend) }}</span>
                 </div>
-                <div class="progress-stat-row">
-                    <span class="progress-stat-label">
-                        At PR
-                        <Info :size="14" class="metric-info" v-tooltip.top="'Number of exercises where your most recent session equals your all-time best estimated 1RM.'" />
-                    </span>
-                    <span class="progress-stat-value">{{ atPrCount }} / {{ progressions.length }}</span>
-                </div>
-                <div class="progress-stat-row">
-                    <span class="progress-stat-label">
+                <div class="trend-group__divider"></div>
+                <div class="trend-item">
+                    <span class="trend-item__label">
                         Volume trend
-                        <Info :size="14" class="metric-info" v-tooltip.top="'Compares average total training volume (load × reps across all exercises) of your last 4 sessions vs the 4 before that.'" />
+                        <button type="button" class="metric-info" @click="showInfo($event, 'Compares average total training volume (load × reps across all exercises) of your last 4 sessions vs the 4 before that.')"><Info :size="13" /></button>
                     </span>
-                    <span class="progress-stat-value" :class="trendClass(volumeTrend)">{{ formatTrend(volumeTrend) }}</span>
+                    <span class="trend-item__value" :class="trendClass(volumeTrend)">{{ formatTrend(volumeTrend) }}</span>
+                </div>
+            </div>
+
+            <div class="progress-card__divider"></div>
+
+            <div class="score-group">
+                <div class="score-row">
+                    <span class="score-row__label">
+                        At PR
+                        <button type="button" class="metric-info" @click="showInfo($event, 'Number of exercises where your most recent session equals your all-time best estimated 1RM.')"><Info :size="13" /></button>
+                    </span>
+                    <div class="score-row__bar"><div class="score-row__fill" :style="{width: `${progressions.length ? atPrCount / progressions.length * 100 : 0}%`}"></div></div>
+                    <span class="score-row__fraction">{{ atPrCount }}/{{ progressions.length }}</span>
+                </div>
+                <div class="score-row">
+                    <span class="score-row__label">
+                        Recent momentum
+                        <button type="button" class="metric-info" @click="showInfo($event, 'Exercises that hit a new personal best e1RM in the last 30 days, compared to all sessions before that.')"><Info :size="13" /></button>
+                    </span>
+                    <div class="score-row__bar"><div class="score-row__fill" :style="{width: `${progressions.length ? recentMomentum / progressions.length * 100 : 0}%`}"></div></div>
+                    <span class="score-row__fraction">{{ recentMomentum }}/{{ progressions.length }}</span>
+                </div>
+                <div class="score-row">
+                    <span class="score-row__label">
+                        Trending up
+                        <button type="button" class="metric-info" @click="showInfo($event, 'Exercises where the most recent session\'s e1RM was higher than the session before it.')"><Info :size="13" /></button>
+                    </span>
+                    <div class="score-row__bar"><div class="score-row__fill" :style="{width: `${progressions.length ? trendingUp / progressions.length * 100 : 0}%`}"></div></div>
+                    <span class="score-row__fraction">{{ trendingUp }}/{{ progressions.length }}</span>
                 </div>
             </div>
         </div>
@@ -503,38 +567,50 @@ function chartOptions(isBodyweight: boolean) {
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--p-text-muted-color);
-    margin-bottom: 12px;
+    margin-bottom: 14px;
 }
 
-.progress-stats {
+.progress-card__divider {
+    border-top: 1px solid var(--p-content-border-color);
+    margin: 16px 0;
+}
+
+.trend-group {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 16px;
+}
+
+.trend-group__divider {
+    width: 1px;
+    height: 36px;
+    background: var(--p-content-border-color);
+}
+
+.trend-item {
     display: flex;
     flex-direction: column;
-    gap: 0;
+    align-items: center;
+    gap: 4px;
 }
 
-.progress-stat-row + .progress-stat-row {
-    border-top: 1px solid var(--p-content-border-color);
-    margin-top: 8px;
-    padding-top: 8px;
-}
-
-.progress-stat-row {
+.trend-item__label {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 6px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--p-text-muted-color);
 }
 
-.progress-stat-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.85rem;
-    color: var(--p-text-color);
-}
-
-.progress-stat-value {
-    font-size: 0.85rem;
+.trend-item__value {
+    font-size: 1.4rem;
     font-weight: 700;
+    color: var(--p-text-color);
+    line-height: 1;
 }
 
 .trend-up {
@@ -545,10 +621,67 @@ function chartOptions(isBodyweight: boolean) {
     color: #eb5757;
 }
 
-.metric-info {
+.score-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.score-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.score-row__label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.82rem;
+    color: var(--p-text-color);
+    min-width: 140px;
+}
+
+.score-row__bar {
+    flex: 1;
+    height: 5px;
+    background: var(--p-content-border-color);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.score-row__fill {
+    height: 100%;
+    background: var(--primary-color);
+    border-radius: 999px;
+    transition: width 0.4s ease;
+}
+
+.score-row__fraction {
+    font-size: 0.78rem;
+    font-weight: 600;
     color: var(--p-text-muted-color);
-    cursor: default;
+    min-width: 32px;
+    text-align: right;
+}
+
+.metric-info {
+    display: inline-flex;
+    align-items: center;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: var(--p-text-muted-color);
     opacity: 0.6;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.info-popover-text {
+    margin: 0;
+    font-size: 0.8rem;
+    max-width: 220px;
+    line-height: 1.4;
 }
 
 .exercises-header {

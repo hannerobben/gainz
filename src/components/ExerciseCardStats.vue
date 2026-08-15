@@ -48,29 +48,26 @@ const weightedStats = computed(() => {
 
 <template>
     <div class="card-stats">
-        <div class="card-stats__heading">Current Performance</div>
+        <div class="card-stats__heading-row">
+            <div class="card-stats__heading">Current Performance</div>
+            <div v-if="progression.eightWeeksAgoStats" class="card-stats__since">vs 8 weeks ago</div>
+        </div>
 
         <div v-if="progression.isBodyweight" class="card-stats__cols card-stats__cols--2">
             <div class="card-stats__col">
                 <div class="card-stats__label">Max Reps</div>
                 <div class="card-stats__value">{{ bwStats.maxReps.value }}</div>
-                <template v-if="bwStats.maxReps.delta">
-                    <div :class="['card-stats__delta', `card-stats__delta--${bwStats.maxReps.delta.cls}`]">
-                        {{ bwStats.maxReps.delta.text }}
-                    </div>
-                    <div class="card-stats__since">vs 8 weeks ago</div>
-                </template>
+                <div v-if="bwStats.maxReps.delta" :class="['card-stats__delta', `card-stats__delta--${bwStats.maxReps.delta.cls}`]">
+                    {{ bwStats.maxReps.delta.text }}
+                </div>
             </div>
 
             <div class="card-stats__col">
                 <div class="card-stats__label">Total Reps</div>
                 <div class="card-stats__value">{{ bwStats.totalReps.value }}</div>
-                <template v-if="bwStats.totalReps.delta">
-                    <div :class="['card-stats__delta', `card-stats__delta--${bwStats.totalReps.delta.cls}`]">
-                        {{ bwStats.totalReps.delta.text }}
-                    </div>
-                    <div class="card-stats__since">vs 8 weeks ago</div>
-                </template>
+                <div v-if="bwStats.totalReps.delta" :class="['card-stats__delta', `card-stats__delta--${bwStats.totalReps.delta.cls}`]">
+                    {{ bwStats.totalReps.delta.text }}
+                </div>
             </div>
         </div>
 
@@ -78,34 +75,25 @@ const weightedStats = computed(() => {
             <div class="card-stats__col">
                 <div class="card-stats__label">Best Set</div>
                 <div class="card-stats__value">{{ weightedStats.bestSet.value }}</div>
-                <template v-if="weightedStats.bestSet.delta">
-                    <div :class="['card-stats__delta', `card-stats__delta--${weightedStats.bestSet.delta.cls}`]">
-                        {{ weightedStats.bestSet.delta.text }}
-                    </div>
-                    <div class="card-stats__since">vs 8 weeks ago</div>
-                </template>
+                <div v-if="weightedStats.bestSet.delta" :class="['card-stats__delta', `card-stats__delta--${weightedStats.bestSet.delta.cls}`]">
+                    {{ weightedStats.bestSet.delta.text }}
+                </div>
             </div>
 
             <div class="card-stats__col">
                 <div class="card-stats__label">Estimated 1RM</div>
                 <div class="card-stats__value">{{ weightedStats.e1rm.value }}</div>
-                <template v-if="weightedStats.e1rm.delta">
-                    <div :class="['card-stats__delta', `card-stats__delta--${weightedStats.e1rm.delta.cls}`]">
-                        {{ weightedStats.e1rm.delta.text }}
-                    </div>
-                    <div class="card-stats__since">vs 8 weeks ago</div>
-                </template>
+                <div v-if="weightedStats.e1rm.delta" :class="['card-stats__delta', `card-stats__delta--${weightedStats.e1rm.delta.cls}`]">
+                    {{ weightedStats.e1rm.delta.text }}
+                </div>
             </div>
 
             <div class="card-stats__col">
                 <div class="card-stats__label">Total Volume</div>
                 <div class="card-stats__value">{{ weightedStats.volume.value }}</div>
-                <template v-if="weightedStats.volume.delta">
-                    <div :class="['card-stats__delta', `card-stats__delta--${weightedStats.volume.delta.cls}`]">
-                        {{ weightedStats.volume.delta.text }}
-                    </div>
-                    <div class="card-stats__since">vs 8 weeks ago</div>
-                </template>
+                <div v-if="weightedStats.volume.delta" :class="['card-stats__delta', `card-stats__delta--${weightedStats.volume.delta.cls}`]">
+                    {{ weightedStats.volume.delta.text }}
+                </div>
             </div>
         </div>
     </div>
@@ -115,13 +103,19 @@ const weightedStats = computed(() => {
 .card-stats {
     padding-bottom: 1rem;
 
+    &__heading-row {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        margin-bottom: 0.5rem;
+    }
+
     &__heading {
         font-size: 0.7rem;
         font-weight: 600;
         letter-spacing: 0.08em;
         text-transform: uppercase;
         color: var(--p-text-muted-color);
-        margin-bottom: 0.5rem;
     }
 
     &__cols {
