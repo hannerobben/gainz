@@ -53,31 +53,42 @@ const stepMap = computed(() => new Map(stepsData.value.map(s => [s.date, s.stepC
 const dailySteps = computed(() => dateRange.value.map(d => stepMap.value.get(d) ?? 0));
 
 const weeklyAgg = computed(() => {
-    const map = new Map<string, number>();
+    const totals = new Map<string, number>();
+    const counts = new Map<string, number>();
     const labels: string[] = [];
     for (const date of dateRange.value) {
         const key = dayjs(date).startOf('isoWeek').format('YYYY-MM-DD');
-        if (!map.has(key)) {
+        if (!totals.has(key)) {
             labels.push(date);
-            map.set(key, 0);
+            totals.set(key, 0);
+            counts.set(key, 0);
         }
-        map.set(key, map.get(key)! + (stepMap.value.get(date) ?? 0));
+        totals.set(key, totals.get(key)! + (stepMap.value.get(date) ?? 0));
+        counts.set(key, counts.get(key)! + 1);
     }
-    return {labels, steps: [...map.values()]};
+    const steps = labels.map((_, i) => {
+        const key = dayjs(labels[i]).startOf('isoWeek').format('YYYY-MM-DD');
+        return Math.round(totals.get(key)! / counts.get(key)!);
+    });
+    return {labels, steps};
 });
 
 const monthlyAgg = computed(() => {
-    const map = new Map<string, number>();
+    const totals = new Map<string, number>();
+    const counts = new Map<string, number>();
     const labels: string[] = [];
     for (const date of dateRange.value) {
         const key = dayjs(date).format('YYYY-MM');
-        if (!map.has(key)) {
+        if (!totals.has(key)) {
             labels.push(key);
-            map.set(key, 0);
+            totals.set(key, 0);
+            counts.set(key, 0);
         }
-        map.set(key, map.get(key)! + (stepMap.value.get(date) ?? 0));
+        totals.set(key, totals.get(key)! + (stepMap.value.get(date) ?? 0));
+        counts.set(key, counts.get(key)! + 1);
     }
-    return {labels, steps: [...map.values()]};
+    const steps = labels.map(key => Math.round(totals.get(key)! / counts.get(key)!));
+    return {labels, steps};
 });
 
 const daysLogged = computed(() => stepsData.value.filter(s => s.stepCount > 0).length);
@@ -121,8 +132,16 @@ const currentWeekSteps = computed(() => {
 });
 
 const weekDailyAvg = computed(() => {
-    const daysElapsed = Math.max(1, dayjs().diff(dayjs().startOf('isoWeek'), 'day') + 1);
-    return Math.round(currentWeekSteps.value / daysElapsed);
+    if (selectedYear.value !== currentYear) return 0;
+    const start = dayjs().startOf('isoWeek');
+    const today = dayjs();
+    const pastDays = dateRange.value.filter(d => {
+        const day = dayjs(d);
+        return !day.isBefore(start) && day.isBefore(today, 'day');
+    });
+    if (pastDays.length === 0) return 0;
+    const total = pastDays.reduce((sum, d) => sum + (stepMap.value.get(d) ?? 0), 0);
+    return Math.round(total / pastDays.length);
 });
 
 const weekProgress = computed(() => Math.min((currentWeekSteps.value / (DAILY_GOAL * 7)) * 100, 100));
@@ -168,11 +187,11 @@ function buildDatasets(steps: number[], goals: number[]) {
 const chartData = computed(() => {
     if (viewMode.value === 'weekly') {
         const {labels, steps} = weeklyAgg.value;
-        return {labels, datasets: buildDatasets(steps, Array(labels.length).fill(DAILY_GOAL * 7))};
+        return {labels, datasets: buildDatasets(steps, Array(labels.length).fill(DAILY_GOAL))};
     }
     if (viewMode.value === 'monthly') {
         const {labels, steps} = monthlyAgg.value;
-        return {labels, datasets: buildDatasets(steps, labels.map(l => dayjs(l).daysInMonth() * DAILY_GOAL))};
+        return {labels, datasets: buildDatasets(steps, Array(labels.length).fill(DAILY_GOAL))};
     }
     return {
         labels: dateRange.value,
@@ -202,7 +221,9 @@ const chartOptions = computed(() => ({
                     return dayjs(lbl).format('MMM D, YYYY');
                 },
                 label: (ctx: {parsed: {x: number}}) =>
-                    ` ${ctx.parsed.x.toLocaleString()} steps`,
+                    viewMode.value === 'daily'
+                        ? ` ${ctx.parsed.x.toLocaleString()} steps`
+                        : ` ${ctx.parsed.x.toLocaleString()} avg steps/day`,
             },
         },
     },
