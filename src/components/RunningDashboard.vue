@@ -5,6 +5,8 @@ import {SECONDARY_COLOR} from '../colors.ts';
 import {useUsersStore} from '../stores/users.store.ts';
 import {RunsApi} from '../supabase/runs.api.ts';
 import dayjs from 'dayjs';
+import isoWeek from 'dayjs/plugin/isoWeek';
+dayjs.extend(isoWeek);
 import LoadingSpinner from './LoadingSpinner.vue';
 
 const usersStore = useUsersStore();
@@ -108,7 +110,7 @@ const bestWeek = computed(() => {
     if (runs.value.length === 0) return null;
     const weekMap = new Map<string, number>();
     for (const r of runs.value) {
-        const key = dayjs(r.date).startOf('week').format('YYYY-MM-DD');
+        const key = dayjs(r.date).startOf('isoWeek').format('YYYY-MM-DD');
         weekMap.set(key, (weekMap.get(key) ?? 0) + r.distance);
     }
     return Math.round(Math.max(...weekMap.values()) * 10) / 10;
@@ -118,7 +120,7 @@ const weeklyDistance = computed(() => {
     if (runs.value.length === 0) return null;
     const weekMap = new Map<string, number>();
     for (const r of runs.value) {
-        const key = dayjs(r.date).startOf('week').format('YYYY-MM-DD');
+        const key = dayjs(r.date).startOf('isoWeek').format('YYYY-MM-DD');
         weekMap.set(key, (weekMap.get(key) ?? 0) + r.distance);
     }
     const total = [...weekMap.values()].reduce((sum, d) => sum + d, 0);
@@ -137,14 +139,14 @@ const runsPerWeek = computed(() => {
 const weeklyBarData = computed(() => {
     const weekMap = new Map<string, number>();
     for (const r of runs.value) {
-        const key = dayjs(r.date).startOf('week').format('YYYY-MM-DD');
+        const key = dayjs(r.date).startOf('isoWeek').format('YYYY-MM-DD');
         weekMap.set(key, Math.round(((weekMap.get(key) ?? 0) + r.distance) * 10) / 10);
     }
     const sorted = [...weekMap.keys()].sort();
     const entries: [string, number][] = [];
-    let current = dayjs(sorted[0]).startOf('week');
-    const lastRun = dayjs(sorted[sorted.length - 1]).startOf('week');
-    const thisWeek = dayjs().startOf('week');
+    let current = dayjs(sorted[0]).startOf('isoWeek');
+    const lastRun = dayjs(sorted[sorted.length - 1]).startOf('isoWeek');
+    const thisWeek = dayjs().startOf('isoWeek');
     const last = lastRun.isAfter(thisWeek) ? lastRun : thisWeek;
     while (!current.isAfter(last)) {
         const key = current.format('YYYY-MM-DD');

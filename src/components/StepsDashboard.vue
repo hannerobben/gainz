@@ -6,6 +6,8 @@ import {walkDotColor} from '../utils/walk-color.ts';
 import {useUsersStore} from '../stores/users.store.ts';
 import {WalksApi} from '../supabase/walks.api.ts';
 import dayjs from 'dayjs';
+import isoWeek from 'dayjs/plugin/isoWeek';
+dayjs.extend(isoWeek);
 import LoadingSpinner from './LoadingSpinner.vue';
 
 const usersStore = useUsersStore();
@@ -54,7 +56,7 @@ const weeklyAgg = computed(() => {
     const map = new Map<string, number>();
     const labels: string[] = [];
     for (const date of dateRange.value) {
-        const key = dayjs(date).startOf('week').format('YYYY-MM-DD');
+        const key = dayjs(date).startOf('isoWeek').format('YYYY-MM-DD');
         if (!map.has(key)) {
             labels.push(date);
             map.set(key, 0);
@@ -112,14 +114,14 @@ const bestStreak = computed(() => {
 
 const currentWeekSteps = computed(() => {
     if (selectedYear.value !== currentYear) return 0;
-    const start = dayjs().startOf('week');
+    const start = dayjs().startOf('isoWeek');
     return dateRange.value
         .filter(d => !dayjs(d).isBefore(start))
         .reduce((sum, d) => sum + (stepMap.value.get(d) ?? 0), 0);
 });
 
 const weekDailyAvg = computed(() => {
-    const daysElapsed = Math.max(1, dayjs().diff(dayjs().startOf('week'), 'day') + 1);
+    const daysElapsed = Math.max(1, dayjs().diff(dayjs().startOf('isoWeek'), 'day') + 1);
     return Math.round(currentWeekSteps.value / daysElapsed);
 });
 
