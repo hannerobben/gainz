@@ -63,12 +63,15 @@ const weeklyAgg = computed(() => {
             totals.set(key, 0);
             counts.set(key, 0);
         }
-        totals.set(key, totals.get(key)! + (stepMap.value.get(date) ?? 0));
-        counts.set(key, counts.get(key)! + 1);
+        if (stepMap.value.has(date)) {
+            totals.set(key, totals.get(key)! + stepMap.value.get(date)!);
+            counts.set(key, counts.get(key)! + 1);
+        }
     }
     const steps = labels.map((_, i) => {
         const key = dayjs(labels[i]).startOf('isoWeek').format('YYYY-MM-DD');
-        return Math.round(totals.get(key)! / counts.get(key)!);
+        const count = counts.get(key)!;
+        return count > 0 ? Math.round(totals.get(key)! / count) : 0;
     });
     return {labels, steps};
 });
@@ -84,10 +87,15 @@ const monthlyAgg = computed(() => {
             totals.set(key, 0);
             counts.set(key, 0);
         }
-        totals.set(key, totals.get(key)! + (stepMap.value.get(date) ?? 0));
-        counts.set(key, counts.get(key)! + 1);
+        if (stepMap.value.has(date)) {
+            totals.set(key, totals.get(key)! + stepMap.value.get(date)!);
+            counts.set(key, counts.get(key)! + 1);
+        }
     }
-    const steps = labels.map(key => Math.round(totals.get(key)! / counts.get(key)!));
+    const steps = labels.map(key => {
+        const count = counts.get(key)!;
+        return count > 0 ? Math.round(totals.get(key)! / count) : 0;
+    });
     return {labels, steps};
 });
 
