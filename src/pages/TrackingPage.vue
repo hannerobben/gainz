@@ -123,6 +123,13 @@ function dotClasses(cell: {dayNumber: number; month: number; isToday: boolean}) 
     };
 }
 
+function withAlpha(hex: string, alpha: number): string {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 function dotStyle(month: number, dayNumber: number) {
     const filters = selectedFilters.value;
     if (filters.has('steps')) {
@@ -153,9 +160,14 @@ function dotStyle(month: number, dayNumber: number) {
         if (filters.has('football') && future.has('FOOTBALL')) futureColors.push('#C1504A');
 
         if (futureColors.length === 0) return undefined;
-        const [first, ...rest] = futureColors;
-        const boxShadow = rest.map((c, i) => `0 0 0 ${2 + (i + 1) * 2}px ${c}`).join(', ');
-        return {borderColor: first, borderWidth: '2px', boxShadow: boxShadow || undefined};
+        if (futureColors.length === 1) {
+            const faded = withAlpha(futureColors[0], 0.15);
+            return {backgroundColor: faded, borderColor: faded};
+        }
+        const stops = futureColors
+            .map((c, i) => `${withAlpha(c, 0.15)} ${(i * 100) / futureColors.length}%, ${withAlpha(c, 0.15)} ${((i + 1) * 100) / futureColors.length}%`)
+            .join(', ');
+        return {background: `linear-gradient(to right, ${stops})`, borderColor: withAlpha(futureColors[0], 0.15)};
     }
 
     return undefined;
