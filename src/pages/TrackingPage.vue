@@ -2,21 +2,27 @@
 import {computed, nextTick, onMounted, ref, watch} from 'vue';
 import {ChevronLeft, ChevronRight} from 'lucide-vue-next';
 import DayDetailDialog from '../components/DayDetailDialog.vue';
+import FutureDayDialog from '../components/FutureDayDialog.vue';
 import WorkoutTypeSelector from '../components/WorkoutTypeSelector.vue';
 import CreateStrengthWorkoutDialog from '../components/CreateStrengthWorkoutDialog.vue';
 import LogWalkDialog from '../components/LogWalkDialog.vue';
 import LogRunDialog from '../components/LogRunDialog.vue';
+import LogFootballDialog from '../components/LogFootballDialog.vue';
 import {useUsersStore} from '../stores/users.store.ts';
 import {WorkoutsApi} from '../supabase/workouts.api.ts';
 import {WalksApi} from '../supabase/walks.api.ts';
 import {RunsApi} from '../supabase/runs.api.ts';
+import {OtherWorkoutsApi} from '../supabase/other-workouts.api.ts';
+import {FutureWorkoutsApi} from '../supabase/future-workouts.api.ts';
 import type {Workout} from '../model/workout.contract.ts';
 import type {Walk} from '../model/walk.contract.ts';
 import type {Run} from '../model/run.contract.ts';
+import type {OtherWorkout} from '../model/other-workout.contract.ts';
+import type {FutureWorkout} from '../model/future-workout.contract.ts';
 import {walkDotColor} from '../utils/walk-color.ts';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 
-const selectedFilters = ref(new Set<string>(['strength', 'running']));
+const selectedFilters = ref(new Set<string>(['strength', 'running', 'football']));
 
 const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -29,6 +35,8 @@ const selectedYear = ref(currentYear);
 const workoutDates = ref<Map<string, Set<string>>>(new Map());
 const walkDates = ref<Map<string, number>>(new Map());
 const runDates = ref<Map<string, number>>(new Map());
+const footballDates = ref<Set<string>>(new Set());
+const futureWorkoutDates = ref<Map<string, Set<string>>>(new Map());
 
 function toDateKey(year: number, month: number, day: number): string {
     return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -36,10 +44,12 @@ function toDateKey(year: number, month: number, day: number): string {
 
 async function fetchWorkoutDates(year: number) {
     if (!usersStore.activeUser) return;
-    const [entries, walks, runs] = await Promise.all([
+    const [entries, walks, runs, footballs, futures] = await Promise.all([
         WorkoutsApi.getDates(usersStore.activeUser.id, year),
         WalksApi.getDates(usersStore.activeUser.id, year),
-        RunsApi.getDates(usersStore.activeUser.id, year)
+        RunsApi.getDates(usersStore.activeUser.id, year),
+        OtherWorkoutsApi.getDates(usersStore.activeUser.id, year, 'FOOTBALL'),
+        FutureWorkoutsApi.getDates(usersStore.activeUser.id, year)
     ]);
     const map = new Map<string, Set<string>>();
     for (const {date, type} of entries) {
@@ -49,6 +59,14 @@ async function fetchWorkoutDates(year: number) {
     workoutDates.value = map;
     walkDates.value = new Map(walks.map(w => [w.date, w.stepCount]));
     runDates.value = new Map(runs.map(r => [r.date, r.distance]));
+    footballDates.value = new Set(footballs.map(f => f.date));
+
+    const futureMap = new Map<string, Set<string>>();
+    for (const {date, type} of futures) {
+        if (!futureMap.has(date)) futureMap.set(date, new Set());
+        futureMap.get(date)!.add(type);
+    }
+    futureWorkoutDates.value = futureMap;
 }
 
 function hasWorkout(month: number, dayNumber: number): boolean {
@@ -64,17 +82,43 @@ function runDistance(month: number, dayNumber: number): number {
     return runDates.value.get(toDateKey(selectedYear.value, month, dayNumber)) ?? 0;
 }
 
+function hasFootball(month: number, dayNumber: number): boolean {
+    return footballDates.value.has(toDateKey(selectedYear.value, month, dayNumber));
+}
+
+function futureTypes(month: number, dayNumber: number): Set<string> {
+    return futureWorkoutDates.value.get(toDateKey(selectedYear.value, month, dayNumber)) ?? new Set();
+}
+
+function dayDate(month: number, dayNumber: number): Date {
+    const date = new Date(selectedYear.value, month, dayNumber);
+    date.setHours(0, 0, 0, 0);
+    return date;
+}
+
+function today(): Date {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    return date;
+}
+
+function isFutureDate(month: number, dayNumber: number): boolean {
+    return dayDate(month, dayNumber).getTime() > today().getTime();
+}
+
 function dotClasses(cell: {dayNumber: number; month: number; isToday: boolean}) {
     const filters = selectedFilters.value;
     const isSteps = filters.has('steps');
     const hasStr = !isSteps && filters.has('strength') && hasWorkout(cell.month, cell.dayNumber);
     const hasRun = !isSteps && filters.has('running') && runDistance(cell.month, cell.dayNumber) > 0;
+    const hasBall = !isSteps && filters.has('football') && hasFootball(cell.month, cell.dayNumber);
+    const activeCount = [hasStr, hasRun, hasBall].filter(Boolean).length;
     return {
         'dot--today': cell.isToday,
         'dot--clickable': true,
-        'dot--worked': hasStr && !hasRun,
-        'dot--ran': hasRun && !hasStr,
-        'dot--split': hasStr && hasRun,
+        'dot--worked': hasStr && activeCount === 1,
+        'dot--ran': (hasRun || hasBall) && activeCount === 1,
+        'dot--split': activeCount >= 2,
         'dot--walked': isSteps && walkSteps(cell.month, cell.dayNumber) > 0,
     };
 }
@@ -87,14 +131,33 @@ function dotStyle(month: number, dayNumber: number) {
         const color = walkDotColor(steps);
         return {backgroundColor: color, borderColor: color};
     }
-    const hasStr = filters.has('strength') && hasWorkout(month, dayNumber);
-    const hasRun = filters.has('running') && runDistance(month, dayNumber) > 0;
-    if (hasStr && hasRun) {
-        return {background: 'linear-gradient(to right, #4A7FC1 50%, #5A9E5A 50%)', borderColor: '#4A7FC1'};
+    const colors: string[] = [];
+    if (filters.has('strength') && hasWorkout(month, dayNumber)) colors.push('#4A7FC1');
+    if (filters.has('running') && runDistance(month, dayNumber) > 0) colors.push('#5A9E5A');
+    if (filters.has('football') && hasFootball(month, dayNumber)) colors.push('#C1504A');
+
+    if (colors.length > 0) {
+        if (colors.length === 1) {
+            if (colors[0] === '#4A7FC1') return undefined; // handled by .dot--worked CSS class
+            return {backgroundColor: colors[0], borderColor: colors[0]};
+        }
+        const stops = colors.map((c, i) => `${c} ${(i * 100) / colors.length}%, ${c} ${((i + 1) * 100) / colors.length}%`).join(', ');
+        return {background: `linear-gradient(to right, ${stops})`, borderColor: colors[0]};
     }
-    if (hasRun) {
-        return {backgroundColor: '#5A9E5A', borderColor: '#5A9E5A'};
+
+    if (isFutureDate(month, dayNumber)) {
+        const future = futureTypes(month, dayNumber);
+        const futureColors: string[] = [];
+        if (filters.has('strength') && future.has('STRENGTH')) futureColors.push('#4A7FC1');
+        if (filters.has('running') && future.has('RUNNING')) futureColors.push('#5A9E5A');
+        if (filters.has('football') && future.has('FOOTBALL')) futureColors.push('#C1504A');
+
+        if (futureColors.length === 0) return undefined;
+        const [first, ...rest] = futureColors;
+        const boxShadow = rest.map((c, i) => `0 0 0 ${2 + (i + 1) * 2}px ${c}`).join(', ');
+        return {borderColor: first, borderWidth: '2px', boxShadow: boxShadow || undefined};
     }
+
     return undefined;
 }
 
@@ -108,6 +171,7 @@ const selectedDateTypes = computed<string[]>(() => {
     const types = Array.from(workoutDates.value.get(key) ?? []);
     if ((runDates.value.get(key) ?? 0) > 0) types.push('running');
     if ((walkDates.value.get(key) ?? 0) > 0) types.push('steps');
+    if (footballDates.value.has(key)) types.push('football');
     return types;
 });
 
@@ -132,6 +196,10 @@ const walkDate = ref<Date | null>(null);
 const existingWalk = ref<Walk | null>(null);
 const runDate = ref<Date | null>(null);
 const existingRun = ref<Run | null>(null);
+const footballDate = ref<Date | null>(null);
+const existingFootball = ref<OtherWorkout | null>(null);
+const futureDate = ref<Date | null>(null);
+const existingFuture = ref<FutureWorkout[]>([]);
 
 async function openStrengthWorkout() {
     const date = selectedDate.value;
@@ -157,9 +225,28 @@ async function openRun() {
     runDate.value = date;
 }
 
+async function openFootball() {
+    const date = selectedDate.value;
+    selectedDate.value = null;
+    if (!date || !usersStore.activeUser) return;
+    existingFootball.value = await OtherWorkoutsApi.getByDate(usersStore.activeUser.id, date, 'FOOTBALL');
+    footballDate.value = date;
+}
+
+async function openFutureDay(date: Date) {
+    if (!usersStore.activeUser) return;
+    existingFuture.value = await FutureWorkoutsApi.getByDate(usersStore.activeUser.id, date);
+    futureDate.value = date;
+}
+
 function openDay(cell: {dayNumber: number; month: number; isToday: boolean} | null) {
     if (!cell) return;
-    selectedDate.value = new Date(selectedYear.value, cell.month, cell.dayNumber);
+    const date = new Date(selectedYear.value, cell.month, cell.dayNumber);
+    if (isFutureDate(cell.month, cell.dayNumber)) {
+        openFutureDay(date);
+    } else {
+        selectedDate.value = date;
+    }
 }
 
 const scrollTargetEl = ref<HTMLElement | null>(null);
@@ -218,7 +305,7 @@ const weeks = computed(() => {
 <template>
     <div class="tracking-page">
         <div class="sticky-header">
-            <WorkoutTypeSelector v-model="selectedFilters" />
+            <WorkoutTypeSelector v-model="selectedFilters" :show-football="true" />
             <div class="year-selector">
                 <button class="year-btn" @click="selectedYear--">
                     <ChevronLeft :size="18" />
@@ -274,6 +361,7 @@ const weeks = computed(() => {
         @open-strength-workout="openStrengthWorkout"
         @open-run="openRun"
         @open-walk="openWalk"
+        @open-football="openFootball"
     />
     <CreateStrengthWorkoutDialog
         :date="strengthWorkoutDate"
@@ -292,6 +380,17 @@ const weeks = computed(() => {
         :existing-run="existingRun"
         @close="runDate = null; existingRun = null"
         @saved="runDate = null; existingRun = null; fetchWorkoutDates(selectedYear)"
+    />
+    <LogFootballDialog
+        :date="footballDate"
+        :existing-football="existingFootball"
+        @close="footballDate = null; existingFootball = null"
+        @saved="footballDate = null; existingFootball = null; fetchWorkoutDates(selectedYear)"
+    />
+    <FutureDayDialog
+        :date="futureDate"
+        :existing="existingFuture"
+        @close="futureDate = null; existingFuture = []; fetchWorkoutDates(selectedYear)"
     />
 </template>
 

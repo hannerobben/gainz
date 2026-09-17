@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import {createLucideIcon, Dumbbell, Footprints} from 'lucide-vue-next';
+import {computed} from 'vue';
+import {createLucideIcon, Dumbbell, Footprints, Volleyball} from 'lucide-vue-next';
 import {SportShoe as SportShoeIcon} from 'lucide';
 import {SECONDARY_COLOR} from '../colors.ts';
 
@@ -8,17 +9,23 @@ const SportShoe = createLucideIcon('SportShoe', SportShoeIcon as any);
 const props = defineProps<{
     modelValue: Set<string>;
     singleSelect?: boolean;
+    showFootball?: boolean;
 }>();
 
 const emit = defineEmits<{
     'update:modelValue': [value: Set<string>];
 }>();
 
-const filters = [
+const allFilters = [
     {type: 'strength', icon: Dumbbell, bg: '#4A7FC1'},
     {type: 'running', icon: SportShoe, bg: '#5A9E5A'},
+    {type: 'football', icon: Volleyball, bg: '#C1504A'},
     {type: 'steps', icon: Footprints, bg: SECONDARY_COLOR}
 ];
+
+const filters = computed(() =>
+    !props.showFootball ? allFilters.filter(f => f.type !== 'football') : allFilters
+);
 
 function toggleFilter(type: string) {
     if (props.singleSelect) {

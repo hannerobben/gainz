@@ -1,13 +1,19 @@
 <script setup lang="ts">
 import {computed} from 'vue';
-import {createLucideIcon, Dumbbell, Footprints} from 'lucide-vue-next';
+import {createLucideIcon, Dumbbell, Footprints, Volleyball} from 'lucide-vue-next';
 import {SECONDARY_COLOR} from '../colors.ts';
 import {SportShoe as SportShoeIcon} from 'lucide';
 
 const SportShoe = createLucideIcon('SportShoe', SportShoeIcon as any);
 
 const props = defineProps<{date: Date | null; existingTypes: string[]}>();
-const emit = defineEmits<{close: []; 'open-strength-workout': []; 'open-run': []; 'open-walk': []}>();
+const emit = defineEmits<{
+    close: [];
+    'open-strength-workout': [];
+    'open-run': [];
+    'open-walk': [];
+    'open-football': [];
+}>();
 
 const visible = computed(() => props.date !== null);
 
@@ -19,6 +25,7 @@ const title = computed(() => {
 const activities = [
     {icon: Dumbbell, bg: '#4A7FC1', type: 'strength', action: () => emit('open-strength-workout')},
     {icon: SportShoe, bg: '#5A9E5A', type: 'running', action: () => emit('open-run')},
+    {icon: Volleyball, bg: '#C1504A', type: 'football', action: () => emit('open-football')},
     {icon: Footprints, bg: SECONDARY_COLOR, type: 'steps', action: () => emit('open-walk')}
 ];
 </script>
@@ -29,6 +36,7 @@ const activities = [
         :header="title"
         :modal="true"
         :closable="true"
+        :style="{width: 'calc(100vw - 32px)'}"
         @update:visible="emit('close')"
     >
         <div class="activity-row">
@@ -51,7 +59,8 @@ const activities = [
 
 <style scoped>
 .activity-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(2, 72px);
     justify-content: center;
     gap: 24px;
     padding: 16px 0 0;

@@ -11,7 +11,7 @@ const selectedType = ref(new Set<string>(['strength']));
 <template>
     <div class="dashboard">
         <div class="dashboard__selector">
-            <WorkoutTypeSelector v-model="selectedType" single-select />
+            <WorkoutTypeSelector v-model="selectedType" single-select :show-football="false" />
         </div>
 
         <StrengthDashboard v-if="selectedType.has('strength')" />
@@ -45,7 +45,6 @@ const selectedType = ref(new Set<string>(['strength']));
 }
 
 .dashboard__empty {
-    color: var(--p-text-muted-color);
     text-align: center;
     padding: 3rem 0;
 }
