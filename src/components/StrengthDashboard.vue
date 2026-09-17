@@ -239,7 +239,9 @@ function chartOptions(isBodyweight: boolean) {
             tooltip: {
                 callbacks: {
                     label: (ctx: {parsed: {y: number}}) =>
-                        isBodyweight ? `${ctx.parsed.y} reps` : `${ctx.parsed.y} kg`,
+                        isBodyweight
+                            ? `${ctx.parsed.y.toFixed(1)} reps`
+                            : `${ctx.parsed.y.toFixed(1)} kg`,
                 },
             },
         },
@@ -247,7 +249,10 @@ function chartOptions(isBodyweight: boolean) {
             x: {grid: {display: false}},
             y: {
                 title: {display: true, text: isBodyweight ? 'Max Reps' : 'e1RM (kg)'},
-                ticks: {callback: (v: number) => isBodyweight ? `${v}` : `${v} kg`},
+                ticks: {
+                    callback: (v: number) =>
+                        isBodyweight ? `${v.toFixed(1)}` : `${v.toFixed(1)} kg`,
+                },
             },
         },
     };
